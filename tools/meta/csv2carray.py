@@ -5,6 +5,13 @@ import csv
 import argparse
 
 
+def create_scons_target(env, input_folder, output_folder, generated_files):
+    def operation(input_folder, output_folder):
+        return lambda target, source, env: main(input_folder, output_folder)
+
+    return env.Command(generated_files, env.Glob(f"{input_folder}/*.csv"), operation(input_folder, output_folder))
+
+
 def main(indir, outdir):
     print(f"Generazioni da {indir} a {outdir}...")
     files = [x for x in [os.path.join(indir, y) for y in os.listdir(
@@ -17,7 +24,7 @@ def main(indir, outdir):
             arrayname = os.path.basename(csvfile).replace(".csv", "")
             tmp = {}
 
-            csvreader.__next__() # Drop the first line
+            csvreader.__next__()  # Drop the first line
 
             for line in csvreader:
                 if len(line) < 2:
