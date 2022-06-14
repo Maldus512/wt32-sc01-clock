@@ -1,0 +1,4 @@
+#ifndef ESP_ATTR_H_INCLUDED
+#define ESP_ATTR_H_INCLUDED
+
+#endif

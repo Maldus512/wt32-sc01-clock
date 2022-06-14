@@ -8,7 +8,7 @@ tmp
 *.pem
 .vscode
 .cache
-simulated
+application
 sdkconfig.h
 
 export.sh

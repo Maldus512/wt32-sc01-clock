@@ -1,1 +1,1 @@
-Template for esp32 projects
+Template for esp32 projects with UI.
