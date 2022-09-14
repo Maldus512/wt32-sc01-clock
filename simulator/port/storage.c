@@ -44,7 +44,7 @@ int storage_load_uint8(uint8_t *value, char *key) {
     if (load_number(&number, key)) {
         return -1;
     } else {
-        *value = (uint8_t)number;
+        *value = (uint16_t)number;
         return 0;
     }
 }
