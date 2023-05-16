@@ -19,7 +19,7 @@ def PhonyTargets(
     env.AlwaysBuild(t)
 
 
-PROGRAM = "application"
+PROGRAM = "app"
 MAIN = "main"
 ASSETS = "assets"
 SIMULATOR = "simulator"
@@ -34,27 +34,20 @@ STRING_TRANSLATIONS = f"{MAIN}/view/intl"
 CFLAGS = [
     "-Wall",
     "-Wextra",
-    "-Wno-unused-function",
     "-g",
     "-O0",
-    "-DSIMULATOR",
+    "-DSIMULATED_APPLICATION",
     "-DESP_PLATFORM",
-    "-Desp_err_t=int",
     "-DLV_CONF_INCLUDE_SIMPLE",
     "-DLV_HOR_RES_MAX=480",
     "-DLV_VER_RES_MAX=320",
-    '-DprojCOVERAGE_TEST=1',
-    '-DGEL_PARAMETER_CONFIGURATION_HEADER="\\"gel_parameter_conf.h\\""',
-    '-DGEL_PAGEMANAGER_CONFIGURATION_HEADER="\\"gel_pman_conf.h\\""',
-    "-Wno-unused-parameter",
-    "-static-libgcc",
-    "-static-libstdc++",
+    '-DprojCOVERAGE_TEST=0',
 ]
 LDLIBS = ["-lSDL2", "-lpthread", "-lm"]
 
 CPPPATH = [
     COMPONENTS, f'#{SIMULATOR}/port', f'#{MAIN}',
-    f"#{MAIN}/config", f"#{SIMULATOR}", B64, CJSON, f"#{LVGL}", f"#{DRIVERS}",
+    f"#{MAIN}/config", f"#{SIMULATOR}", B64, CJSON, f"#{LVGL}", f"#{DRIVERS}", 
 ]
 
 TRANSLATIONS = [
@@ -68,12 +61,12 @@ TRANSLATIONS = [
 
 def main():
     num_cpu = multiprocessing.cpu_count()
-    SetOption('num_jobs', num_cpu)
+    SetOption("num_jobs", num_cpu)
     print("Running with -j {}".format(GetOption('num_jobs')))
 
     env_options = {
         "ENV": os.environ,
-        "CC": ARGUMENTS.get('cc', 'gcc'),
+        "CC": ARGUMENTS.get("cc", "gcc"),
         "ENV": os.environ,
         "CPPPATH": CPPPATH,
         'CPPDEFINES': [],
@@ -100,11 +93,9 @@ def main():
         f'{FREERTOS}/SConscript', exports=['freertos_env'])
     env['CPPPATH'] += [include]
 
-    gel_env = env
-    gel_selected = ["pagemanager", "collections",
-                    "parameter", "timer", "data_structures"]
-    (gel, include) = SConscript(
-        f'{COMPONENTS}/generic_embedded_libs/SConscript', exports=['gel_env', 'gel_selected'])
+    pman_env = env
+    (pman, include) = SConscript(
+        f'{COMPONENTS}/c-page-manager/SConscript', exports=['pman_env'])
     env['CPPPATH'] += [include]
 
     sources = Glob(f'{SIMULATOR}/*.c')
@@ -116,7 +107,7 @@ def main():
     sources += [File(filename)
                 for filename in Path('main/controller').glob('*.c')]
     sources += [File(filename)
-                for filename in Path('main/utils').rglob('*.c')]
+                for filename in Path('main/services').rglob('*.c')]
     sources += [File(filename)
                 for filename in Path(f'{LVGL}/src').rglob('*.c')]
     sources += [File(filename) for filename in Path(DRIVERS).rglob('*.c')]
@@ -124,8 +115,7 @@ def main():
     sources += [File(f'{B64}/encode.c'),
                 File(f'{B64}/decode.c'), File(f'{B64}/buffer.c')]
 
-    prog = env.Program(PROGRAM, sdkconfig + sources +
-                       freertos + gel)
+    prog = env.Program(PROGRAM, sdkconfig + sources + freertos + pman)
     env.Depends(prog, translations)
     PhonyTargets("run", f"./{PROGRAM}", prog, env)
     compileDB = env.CompilationDatabase('build/compile_commands.json')

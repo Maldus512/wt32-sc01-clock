@@ -1223,21 +1223,10 @@ CONFIG_WPA_MBEDTLS_CRYPTO=y
 # end of Supplicant
 
 #
-# GEL
+# Page manager
 #
-CONFIG_GEL_COLLECTIONS=y
-# CONFIG_GEL_CRC_ALGORITHMS is not set
-# CONFIG_GEL_DEBOUNCE is not set
-# CONFIG_GEL_KEYPAD is not set
-CONFIG_GEL_PAGE_MANAGER=y
-CONFIG_GEL_PAGEMANAGER_CONFIGURATION_HEADER="gel_pman_conf.h"
-# CONFIG_GEL_PARAMETER is not set
-# CONFIG_GEL_DATA_STRUCTURES is not set
-# CONFIG_GEL_TIMER is not set
-# CONFIG_GEL_WEARLEVELING is not set
-# CONFIG_GEL_PID is not set
-CONFIG_GEL_CONF_INCLUDE_PATH="main/config main components/lvgl"
-# end of GEL
+CONFIG_PMAN_PAGE_STACK_DEPTH=16
+# end of Page manager
 
 #
 # LVGL configuration

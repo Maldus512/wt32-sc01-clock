@@ -1,32 +1,39 @@
+#include <assert.h>
 #include <stdlib.h>
 #include "lvgl.h"
-#include "model/model.h"
+#include "model/model_updater.h"
 #include "view/view.h"
-#include "view/view_types.h"
 #include "view/theme/style.h"
 #include "view/intl/intl.h"
-#include "gel/pagemanager/page_manager.h"
 
 
+struct page_data {
+    view_controller_msg_t cmsg;
+};
 
 
-struct page_data {};
+static void *create_page(pman_handle_t handle, void *extra) {
+    (void)handle;
+    (void)extra;
 
-
-static void *create_page(model_t *pmodel, void *extra) {
-    struct page_data *pdata = malloc(sizeof(struct page_data));
+    struct page_data *pdata = lv_mem_alloc(sizeof(struct page_data));
+    assert(pdata != NULL);
     return pdata;
 }
 
 
-static void open_page(model_t *pmodel, void *args) {
-    struct page_data *pdata = args;
+static void open_page(pman_handle_t handle, void *state) {
+    struct page_data *pdata = state;
     (void)pdata;
+
+    model_updater_t updater = pman_get_user_data(handle);
+    const model_t  *model   = model_updater_get(updater);
+
     lv_obj_t *btn, *lbl;
 
     btn = lv_btn_create(lv_scr_act());
     lbl = lv_label_create(btn);
-    lv_label_set_text(lbl, view_intl_get_string(pmodel, STRINGS_HELLO_WORLD));
+    lv_label_set_text(lbl, view_intl_get_string(model, STRINGS_HELLO_WORLD));
     lv_obj_center(lbl);
     lv_obj_center(btn);
 
@@ -48,11 +55,17 @@ static void open_page(model_t *pmodel, void *args) {
 }
 
 
-static view_message_t page_event(model_t *pmodel, void *args, view_event_t event) {
-    view_message_t msg = VIEW_NULL_MESSAGE;
+static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t event) {
+    (void)handle;
 
-    switch (event.code) {
+    pman_msg_t msg = PMAN_MSG_NULL;
 
+    struct page_data *pdata = state;
+
+    msg.user_msg    = &pdata->cmsg;
+    pdata->cmsg.tag = VIEW_CONTROLLER_MESSAGE_TAG_NOTHING;
+
+    switch (event.tag) {
         default:
             break;
     }
@@ -63,8 +76,8 @@ static view_message_t page_event(model_t *pmodel, void *args, view_event_t event
 
 const pman_page_t page_main = {
     .create        = create_page,
-    .destroy       = view_destroy_all,
+    .destroy       = pman_destroy_all,
     .open          = open_page,
-    .close         = view_close_all,
+    .close         = pman_close_all,
     .process_event = page_event,
 };

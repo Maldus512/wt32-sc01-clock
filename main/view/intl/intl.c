@@ -7,6 +7,6 @@ const char *view_intl_get_string_in_language(uint16_t language, strings_t id) {
 }
 
 
-const char *view_intl_get_string(model_t *pmodel, strings_t id) {
-    return view_intl_get_string_in_language(model_get_language(pmodel), id);
+const char *view_intl_get_string(const model_t *model, strings_t id) {
+    return view_intl_get_string_in_language(model_get_language(model), id);
 }

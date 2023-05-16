@@ -1,19 +1,21 @@
+# Custom
+tmp
+
+# Scons
 .sconsign.dblite
 .env
-.mypy_cache
-tags
-*_test
-*_Runner.c
-tmp
+
+# Security
 *.pem
+
+# IDE
 .vscode
 .cache
-application
+dependencies.lock
+
+# Build artifacts
+app
 sdkconfig.h
-
-export.sh
-*.log
-
 build/
 sdkconfig.old
 *.old

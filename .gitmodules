@@ -22,3 +22,6 @@
 [submodule "simulator/lv_drivers"]
 	path = simulator/lv_drivers
 	url = https://github.com/lvgl/lv_drivers.git
+[submodule "components/c-page-manager"]
+	path = components/c-page-manager
+	url = https://github.com/Maldus512/c-page-manager.git

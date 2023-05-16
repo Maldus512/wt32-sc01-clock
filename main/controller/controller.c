@@ -1,21 +1,26 @@
 #include "controller.h"
 #include "model/model.h"
 #include "view/view.h"
+#include "gui.h"
 
 
-void controller_init(model_t *pmodel) {
-    view_change_page(pmodel, &page_main);
+void controller_init(model_updater_t updater, mut_model_t *model) {
+    (void)updater;
+    (void)model;
+
+    view_change_page(&page_main);
 }
 
 
-void controller_process_message(model_t *pmodel, view_controller_message_t *msg) {
-    switch (msg->code) {
-        case VIEW_CONTROLLER_MESSAGE_CODE_NOTHING:
-            break;
-    }
+void controller_process_message(pman_handle_t handle, void *msg) {
+    (void)handle;
+    (void)msg;
 }
 
 
-void controller_manage(model_t *pmodel) {
-    (void)pmodel;
+void controller_manage(model_updater_t updater, mut_model_t *model) {
+    (void)updater;
+    (void)model;
+
+    controller_gui_manage();
 }

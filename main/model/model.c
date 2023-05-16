@@ -2,13 +2,9 @@
 #include <assert.h>
 #include "model.h"
 
-void model_init(model_t *pmodel) {
-    assert(pmodel != NULL);
-    pmodel->configuration.language = 0;
-}
 
+void model_init(mut_model_t *model) {
+    assert(model != NULL);
 
-uint16_t model_get_language(model_t *pmodel) {
-    assert(pmodel != NULL);
-    return pmodel->configuration.language;
+    model->config.language = 0;
 }
