@@ -18,18 +18,16 @@ void app_main(void *arg) {
 
     mut_model_t model = {0};
 
-    model_updater_t updater = model_updater_init(&model);
-
     lv_init();
     sdl_init();
 
-    model_init(&model);
+    model_updater_t updater = model_updater_init(&model);
     view_init(updater, controller_process_message, sdl_display_flush, sdl_mouse_read);
-    controller_init(updater, &model);
+    controller_init(updater);
 
     ESP_LOGI(TAG, "Begin main loop");
     for (;;) {
-        controller_manage(updater, &model);
+        controller_manage(updater);
 
         vTaskDelay(pdMS_TO_TICKS(5));
     }

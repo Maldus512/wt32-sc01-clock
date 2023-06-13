@@ -13,8 +13,7 @@
 static const char *TAG = "Main";
 
 void app_main(void) {
-    mut_model_t model = {0};
-
+    mut_model_t     model   = {0};
     model_updater_t updater = model_updater_init(&model);
 
     lvgl_i2c_init(I2C_NUM_0);
@@ -22,11 +21,11 @@ void app_main(void) {
 
     model_init(&model);
     view_init(updater, controller_process_message, disp_driver_flush, ft6x36_read);
-    controller_init(updater, &model);
+    controller_init(updater);
 
     ESP_LOGI(TAG, "Begin main loop");
     for (;;) {
-        controller_manage(updater, &model);
+        controller_manage(updater);
 
         vTaskDelay(pdMS_TO_TICKS(5));
     }

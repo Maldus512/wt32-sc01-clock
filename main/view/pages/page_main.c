@@ -27,7 +27,7 @@ static void open_page(pman_handle_t handle, void *state) {
     (void)pdata;
 
     model_updater_t updater = pman_get_user_data(handle);
-    const model_t  *model   = model_updater_get(updater);
+    const model_t  *model   = model_updater_read(updater);
 
     lv_obj_t *btn, *lbl;
 

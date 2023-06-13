@@ -9,8 +9,8 @@
 typedef struct model_updater *model_updater_t;
 
 
-model_updater_t model_updater_init(mut_model_t *model);
-const model_t  *model_updater_get(model_updater_t updater);
+model_updater_t model_updater_init(mut_model_t *pmodel);
+const model_t  *model_updater_read(model_updater_t updater);
 
 
 #endif

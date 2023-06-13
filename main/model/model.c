@@ -3,8 +3,8 @@
 #include "model.h"
 
 
-void model_init(mut_model_t *model) {
-    assert(model != NULL);
+void model_init(mut_model_t *pmodel) {
+    assert(pmodel != NULL);
 
-    model->config.language = 0;
+    pmodel->config.language = 0;
 }

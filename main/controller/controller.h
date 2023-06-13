@@ -6,8 +6,8 @@
 #include "view/view.h"
 
 
-void controller_init(model_updater_t updater, mut_model_t *model);
-void controller_manage(model_updater_t updater, mut_model_t *model);
+void controller_init(model_updater_t updater);
+void controller_manage(model_updater_t updater);
 void controller_process_message(pman_handle_t handle, void *msg);
 
 

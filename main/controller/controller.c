@@ -4,9 +4,8 @@
 #include "gui.h"
 
 
-void controller_init(model_updater_t updater, mut_model_t *model) {
+void controller_init(model_updater_t updater) {
     (void)updater;
-    (void)model;
 
     view_change_page(&page_main);
 }
@@ -18,9 +17,8 @@ void controller_process_message(pman_handle_t handle, void *msg) {
 }
 
 
-void controller_manage(model_updater_t updater, mut_model_t *model) {
+void controller_manage(model_updater_t updater) {
     (void)updater;
-    (void)model;
 
     controller_gui_manage();
 }
