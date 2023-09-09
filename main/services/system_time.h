@@ -1,4 +1,3 @@
-
 #ifndef SYSTEM_TIME_H_INCLUDED
 #define SYSTEM_TIME_H_INCLUDED
 
@@ -41,4 +40,4 @@ static inline __attribute__((always_inline)) int is_strictly_expired(timestamp_t
 }
 
 
-#endif /* __TIMECHECK_H__ */
+#endif 

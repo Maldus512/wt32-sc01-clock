@@ -1,7 +1,7 @@
 #ifndef CONTROLLER_H_INCLUDED
 #define CONTROLLER_H_INCLUDED
 
-#include "model/model_updater.h"
+#include "model/updater.h"
 #include "model/model.h"
 #include "view/view.h"
 

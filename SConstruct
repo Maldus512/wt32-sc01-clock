@@ -2,7 +2,6 @@ import kconfiglib
 import os
 import multiprocessing
 from pathlib import Path
-import tools.meta.csv2carray as csv2carray
 from tools.meta.genkconfig import generate_sdkconfig_header
 
 
@@ -42,20 +41,13 @@ CFLAGS = [
     "-DLV_HOR_RES_MAX=480",
     "-DLV_VER_RES_MAX=320",
     '-DprojCOVERAGE_TEST=0',
+    '-DIDF_VER="\\"SIMULATED\\""',
 ]
 LDLIBS = ["-lSDL2", "-lpthread", "-lm"]
 
 CPPPATH = [
     COMPONENTS, f'#{SIMULATOR}/port', f'#{MAIN}',
     f"#{MAIN}/config", f"#{SIMULATOR}", B64, CJSON, f"#{LVGL}", f"#{DRIVERS}", 
-]
-
-TRANSLATIONS = [
-    {
-        "generated_files": [f"{STRING_TRANSLATIONS}/AUTOGEN_FILE_strings.c", f"{STRING_TRANSLATIONS}/AUTOGEN_FILE_strings.h"],
-        "input_folder": f"{ASSETS}/translations/strings",
-        "output_folder": STRING_TRANSLATIONS
-    },
 ]
 
 
@@ -77,11 +69,6 @@ def main():
     env = Environment(**env_options)
     env.Tool('compilation_db')
 
-    translations = []
-    for translation in TRANSLATIONS:
-        translations += csv2carray.create_scons_target(env, **translation)
-    env.Alias("intl", translations)
-
     sdkconfig = env.Command(
         f"{SIMULATOR}/sdkconfig.h",
         [str(filename) for filename in Path(
@@ -98,6 +85,11 @@ def main():
         f'{COMPONENTS}/c-page-manager/SConscript', exports=['pman_env'])
     env['CPPPATH'] += [include]
 
+    c_watcher_env = env
+    (watcher, include) = SConscript(
+        f'{COMPONENTS}/c-watcher/SConscript', exports=['c_watcher_env'])
+    env['CPPPATH'] += [include]
+
     sources = Glob(f'{SIMULATOR}/*.c')
     sources += Glob(f'{SIMULATOR}/port/*.c')
     sources += [File(filename) for filename in Path('main/model').rglob('*.c')]
@@ -107,16 +99,13 @@ def main():
     sources += [File(filename)
                 for filename in Path('main/controller').glob('*.c')]
     sources += [File(filename)
-                for filename in Path('main/services').rglob('*.c')]
-    sources += [File(filename)
                 for filename in Path(f'{LVGL}/src').rglob('*.c')]
     sources += [File(filename) for filename in Path(DRIVERS).rglob('*.c')]
     sources += [File(f'{CJSON}/cJSON.c')]
     sources += [File(f'{B64}/encode.c'),
                 File(f'{B64}/decode.c'), File(f'{B64}/buffer.c')]
 
-    prog = env.Program(PROGRAM, sdkconfig + sources + freertos + pman)
-    env.Depends(prog, translations)
+    prog = env.Program(PROGRAM, sdkconfig + sources + freertos + pman + watcher)
     PhonyTargets("run", f"./{PROGRAM}", prog, env)
     compileDB = env.CompilationDatabase('build/compile_commands.json')
     env.Depends(prog, compileDB)

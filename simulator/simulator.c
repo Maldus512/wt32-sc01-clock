@@ -1,5 +1,5 @@
 #include "FreeRTOS.h"
-#include "model/model_updater.h"
+#include "model/updater.h"
 #include "task.h"
 #include "esp_log.h"
 #include "sdl/sdl.h"
@@ -8,6 +8,7 @@
 #include "view/view.h"
 #include "controller/controller.h"
 #include "controller/gui.h"
+#include "controller/persistance.h"
 
 
 static const char *TAG = "Main";
@@ -22,6 +23,7 @@ void app_main(void *arg) {
     sdl_init();
 
     model_updater_t updater = model_updater_init(&model);
+    persistance_load(&model);
     view_init(updater, controller_process_message, sdl_display_flush, sdl_mouse_read);
     controller_init(updater);
 
