@@ -13,6 +13,9 @@
 const char *PERSISTANCE_NORMAL_BRIGHTNESS_KEY  = "NORMALBR";
 const char *PERSISTANCE_STANDBY_BRIGHTNESS_KEY = "STANDBYBR";
 const char *PERSISTANCE_STANDBY_DELAY_KEY      = "STANDBYDELAY";
+const char *PERSISTANCE_ALARM_NUM_KEY          = "ALARMNUM";
+
+static const char *ALARM_KEY_FMT = "ALARM%i";
 
 
 static const char *TAG = "Persistance";
@@ -22,6 +25,13 @@ void persistance_load(mut_model_t *pmodel) {
     storage_load_uint8(&pmodel->config.normal_brightness, (char *)PERSISTANCE_NORMAL_BRIGHTNESS_KEY);
     storage_load_uint8(&pmodel->config.standby_brightness, (char *)PERSISTANCE_STANDBY_BRIGHTNESS_KEY);
     storage_load_uint16(&pmodel->config.standby_delay_seconds, (char *)PERSISTANCE_STANDBY_DELAY_KEY);
+    storage_load_uint16(&pmodel->config.num_alarms, (char *)PERSISTANCE_ALARM_NUM_KEY);
+
+    for (size_t i = 0; i < pmodel->config.num_alarms; i++) {
+        char string[32] = {0};
+        snprintf(string, sizeof(string), ALARM_KEY_FMT, (int)i);
+        storage_load_blob(&pmodel->config.alarms[i], sizeof(alarm_t), string);
+    }
 }
 
 
@@ -29,7 +39,7 @@ void persistance_save_variable(void *old_value, const void *memory, uint16_t siz
     (void)old_value;
     (void)user_ptr;
 
-    ESP_LOGI(TAG, "Saving variable %s of size %zu", (char *)arg, size);
+    ESP_LOGI(TAG, "Saving variable %s of size %zu", (char *)arg, (size_t)size);
     switch (size) {
         case sizeof(uint8_t):
             storage_save_uint8((uint8_t *)memory, arg);
@@ -47,4 +57,11 @@ void persistance_save_variable(void *old_value, const void *memory, uint16_t siz
             storage_save_blob((void *)memory, size, arg);
             break;
     }
+}
+
+
+void persistance_save_alarm(size_t alarm_num, alarm_t alarm) {
+    char string[32] = {0};
+    snprintf(string, sizeof(string), ALARM_KEY_FMT, (int)alarm_num);
+    storage_save_blob(&alarm, sizeof(alarm), string);
 }

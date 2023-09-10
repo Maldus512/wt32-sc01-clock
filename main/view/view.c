@@ -27,7 +27,6 @@ static void view_watcher_cb(void *old_value, const void *memory, uint16_t size, 
 static void close_page_global_cb(void *user_ptr, void *page_state);
 
 
-view_controller_msg_t view_cmsg   = {0};
 static const char    *TAG         = "View";
 static pman_t         pman        = {0};
 static QueueHandle_t  event_queue = NULL;
@@ -79,6 +78,11 @@ void view_init(model_updater_t updater, pman_user_msg_cb_t controller_cb,
 
 void view_change_page(const pman_page_t *page) {
     pman_change_page(&pman, *page);
+}
+
+
+uint8_t view_is_current_page_id(int id) {
+    return pman_is_current_page_id(&pman, id);
 }
 
 

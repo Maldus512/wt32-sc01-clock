@@ -20,6 +20,8 @@ void observer_init(model_t *pmodel) {
                               (void *)PERSISTANCE_STANDBY_BRIGHTNESS_KEY, 4000UL);
     WATCHER_ADD_ENTRY_DELAYED(&watcher, &pmodel->config.normal_brightness, persistance_save_variable,
                               (void *)PERSISTANCE_STANDBY_DELAY_KEY, 4000UL);
+    WATCHER_ADD_ENTRY(&watcher, &pmodel->config.num_alarms, persistance_save_variable,
+                      (void *)PERSISTANCE_ALARM_NUM_KEY);
 }
 
 

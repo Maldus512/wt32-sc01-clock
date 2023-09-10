@@ -10,6 +10,7 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "network.h"
+#include "server.h"
 #include "model/updater.h"
 
 
@@ -20,18 +21,16 @@ static void      network_connecting(void);
 static esp_err_t scan_networks(uint8_t channel);
 
 
-static const uint32_t EVENT_CONNECTED      = BIT0;
-static const uint32_t EVENT_STOPPED        = BIT1;
-static const uint32_t EVENT_SCAN_REQUESTED = BIT2;
-static const uint32_t EVENT_SCAN_RETRY     = BIT3;
-static const uint32_t EVENT_SCAN_DONE      = BIT4;
+static const uint32_t EVENT_CONNECTED  = BIT0;
+static const uint32_t EVENT_STOPPED    = BIT1;
+static const uint32_t EVENT_SCAN_RETRY = BIT3;
+static const uint32_t EVENT_SCAN_DONE  = BIT4;
 
 
 static const char *TAG = "Network";
 
 static EventGroupHandle_t wifi_event_group               = NULL;
 static SemaphoreHandle_t  sem                            = NULL;
-static TimerHandle_t      reconnect_timer                = NULL;
 static uint32_t           ip_address                     = 0;
 static wifi_state_t       wifi_state                     = WIFI_STATE_DISCONNECTED;
 static uint16_t           ap_list_count                  = 0;
@@ -39,7 +38,7 @@ static wifi_ap_record_t   ap_list[MAX_AP_SCAN_LIST_SIZE] = {0};
 static uint8_t            connect_after_stop             = 0;
 
 
-void network_init(model_t *pmodel) {
+void network_init(void) {
     static StaticEventGroup_t event_group_buffer;
     wifi_event_group = xEventGroupCreateStatic(&event_group_buffer);
     static StaticSemaphore_t semaphore_buffer;
@@ -72,15 +71,28 @@ void network_connect_to(char *ssid, char *psk) {
     esp_wifi_set_config(WIFI_IF_STA, &config);
 
     xSemaphoreTake(sem, portMAX_DELAY);
-    connect_after_stop = 1;
+    switch (wifi_state) {
+        case WIFI_STATE_DISCONNECTED:
+            esp_wifi_connect();
+            break;
+        case WIFI_STATE_CONNECTING:
+            connect_after_stop = 1;
+            esp_wifi_stop();
+            break;
+        case WIFI_STATE_CONNECTED:
+            esp_wifi_disconnect();
+            break;
+    }
     xSemaphoreGive(sem);
-
-    esp_wifi_stop();
 }
 
 
 void network_start_sta(void) {
     /* Start Wi-Fi in station mode with credentials set during provisioning */
+    wifi_config_t config = {0};
+    esp_wifi_get_config(WIFI_IF_STA, &config);
+    ESP_LOGI(TAG, "Starting connection for %s %s", config.sta.ssid, config.sta.password);
+
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_start());
 }
@@ -93,7 +105,6 @@ void network_stop(void) {
 
 void network_scan_access_points(uint8_t channel) {
     xEventGroupClearBits(wifi_event_group, EVENT_SCAN_DONE);
-    xEventGroupSetBits(wifi_event_group, EVENT_SCAN_REQUESTED);
     if (scan_networks(channel) != ESP_OK) {
         ESP_LOGI(TAG, "Temporarily unable to scan");
         xEventGroupSetBits(wifi_event_group, EVENT_SCAN_RETRY);
@@ -111,6 +122,7 @@ int network_get_scan_result(model_updater_t updater) {
         }
         model_updater_set_scanning(updater, 0);
         xSemaphoreGive(sem);
+        xEventGroupClearBits(wifi_event_group, EVENT_SCAN_DONE);
         return 1;
     } else {
         return 0;
@@ -138,11 +150,18 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int ev
                 wifi_mode_t mode = WIFI_MODE_STA;
                 ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_get_mode(&mode));
                 if (mode == WIFI_MODE_STA) {
+                    wifi_config_t config = {0};
+                    esp_wifi_get_config(WIFI_IF_STA, &config);
+
                     ESP_LOGI(TAG, "STA started");
-                    xSemaphoreTake(sem, portMAX_DELAY);
-                    wifi_state = WIFI_STATE_CONNECTING;
-                    xSemaphoreGive(sem);
-                    esp_wifi_connect();
+                    if (strlen((char *)config.sta.ssid) > 0) {
+                        xSemaphoreTake(sem, portMAX_DELAY);
+                        wifi_state = WIFI_STATE_CONNECTING;
+                        xSemaphoreGive(sem);
+                        esp_wifi_connect();
+                    } else {
+                        ESP_LOGI(TAG, "No saved network");
+                    }
                 } else {
                     ESP_LOGW(TAG, "STA started in APSTA MODE");
                 }
@@ -166,8 +185,8 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int ev
 
                 xSemaphoreTake(sem, portMAX_DELAY);
                 if (connect_after_stop) {
-                    ESP_LOGI(TAG, "Trying to start WiFi (timer)");
-                    xTimerStart(reconnect_timer, portMAX_DELAY);
+                    connect_after_stop = 0;
+                    esp_wifi_start();
                 }
                 xSemaphoreGive(sem);
                 break;
@@ -178,36 +197,30 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int ev
                 break;
 
             case WIFI_EVENT_SCAN_DONE: {
-                // Only access scan results if the scan was requested by this module (as opposed to the provisioning
-                // module)
-                if ((xEventGroupGetBits(wifi_event_group) & EVENT_SCAN_REQUESTED) > 0) {
-                    uint16_t number = MAX_AP_SCAN_LIST_SIZE;
+                uint16_t number = MAX_AP_SCAN_LIST_SIZE;
 
-                    xSemaphoreTake(sem, portMAX_DELAY);
-                    esp_err_t err = esp_wifi_scan_get_ap_records(&number, ap_list);
-                    if (err == ESP_OK) {
-                        if (number >= MAX_AP_SCAN_LIST_SIZE) {
-                            number = MAX_AP_SCAN_LIST_SIZE;
-                        }
-
-                        ap_list_count = number;
-                    } else {
-                        number = 0;
-                    }
-                    xSemaphoreGive(sem);
-
-                    uint8_t should_rescan = xEventGroupGetBits(wifi_event_group) & EVENT_SCAN_RETRY;
-
-                    if (should_rescan) {
-                        xEventGroupClearBits(wifi_event_group, EVENT_SCAN_RETRY);
-                        network_connecting();
-                        esp_wifi_connect();
+                xSemaphoreTake(sem, portMAX_DELAY);
+                esp_err_t err = esp_wifi_scan_get_ap_records(&number, ap_list);
+                if (err == ESP_OK) {
+                    if (number >= MAX_AP_SCAN_LIST_SIZE) {
+                        number = MAX_AP_SCAN_LIST_SIZE;
                     }
 
-                    ESP_LOGI(TAG, "Wifi scan done, %i networks found", number);
+                    ap_list_count = number;
+                } else {
+                    number = 0;
+                }
+                xSemaphoreGive(sem);
 
-                    xEventGroupClearBits(wifi_event_group, EVENT_SCAN_REQUESTED);
-                    xEventGroupSetBits(wifi_event_group, EVENT_SCAN_DONE);
+                ESP_LOGI(TAG, "Wifi scan done, %i networks found", number);
+                xEventGroupSetBits(wifi_event_group, EVENT_SCAN_DONE);
+
+                uint8_t should_rescan = xEventGroupGetBits(wifi_event_group) & EVENT_SCAN_RETRY;
+
+                if (should_rescan) {
+                    xEventGroupClearBits(wifi_event_group, EVENT_SCAN_RETRY);
+                    network_connecting();
+                    esp_wifi_connect();
                 }
                 break;
             }
@@ -283,6 +296,7 @@ static void network_connected(uint32_t ip) {
     ip_address = ip;
     wifi_state = WIFI_STATE_CONNECTED;
     xSemaphoreGive(sem);
+    server_start();
 }
 
 
@@ -291,6 +305,7 @@ static void network_disconnected(void) {
     xSemaphoreTake(sem, portMAX_DELAY);
     wifi_state = WIFI_STATE_DISCONNECTED;
     xSemaphoreGive(sem);
+    server_stop();
 }
 
 

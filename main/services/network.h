@@ -6,7 +6,7 @@
 #include "model/updater.h"
 
 
-void network_init(model_t *pmodel);
+void network_init(void);
 void network_stop(void);
 void network_scan_access_points(uint8_t channel);
 void network_stop(void);

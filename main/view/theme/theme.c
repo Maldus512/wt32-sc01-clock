@@ -8,7 +8,7 @@ static void theme_apply_cb(lv_theme_t *th, lv_obj_t *obj);
 void theme_init(lv_disp_t *disp) {
     // lv_theme_t *th = lv_theme_basic_init(disp);
     lv_theme_t *th =
-        lv_theme_default_init(disp, STYLE_MAIN_COLOR, lv_color_make(0x13, 0xA1, 0xA1), 1, STYLE_FONT_MEDIUM);
+        lv_theme_default_init(disp, STYLE_MAIN_COLOR, STYLE_SECONDARY_COLOR, 1, STYLE_FONT_MEDIUM);
 
     /*Initialize the new theme from the current theme*/
     static lv_theme_t th_new;

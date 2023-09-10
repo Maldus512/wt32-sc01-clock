@@ -4,6 +4,7 @@
 #include "view/view.h"
 #include "view/common.h"
 #include "view/theme/style.h"
+#include <esp_log.h>
 
 
 #define KB_BTN(width) width
@@ -11,7 +12,7 @@
 
 enum {
     BACK_BTN_ID,
-    PASSWORD_KB_ID,
+    KEYBOARD_ID,
 };
 
 
@@ -64,7 +65,6 @@ static const char *const kb_map_spec[] = {
     LV_SYMBOL_KEYBOARD,
     "&",
     " ",
-    "\u20AC",     // Euro symbol
     LV_SYMBOL_OK,
     "",
 };
@@ -113,6 +113,9 @@ static const lv_btnmatrix_ctrl_t kb_ctrl_spec_map[] = {
 };
 
 
+static const char *TAG = "PageWifiPsk";
+
+
 static void *create_page(pman_handle_t handle, void *extra) {
     (void)handle;
 
@@ -125,9 +128,8 @@ static void *create_page(pman_handle_t handle, void *extra) {
 
 
 static void open_page(pman_handle_t handle, void *state) {
-    struct page_data *pdata   = state;
-    model_updater_t   updater = pman_get_user_data(handle);
-    model_t          *pmodel  = model_updater_read(updater);
+    (void)handle;
+    struct page_data *pdata = state;
 
     lv_obj_t *btn = lv_btn_create(lv_scr_act());
     lv_obj_set_size(btn, 56, 56);
@@ -140,6 +142,7 @@ static void open_page(pman_handle_t handle, void *state) {
     view_register_object_default_callback(btn, BACK_BTN_ID);
 
     lv_obj_t *ta = lv_textarea_create(lv_scr_act());
+    lv_obj_set_style_text_font(ta, STYLE_FONT_SMALL, LV_STATE_DEFAULT);
     lv_textarea_set_one_line(ta, 1);
     lv_textarea_set_text(ta, "");
     lv_textarea_set_max_length(ta, 33);
@@ -150,16 +153,16 @@ static void open_page(pman_handle_t handle, void *state) {
     pdata->textarea = ta;
 
     lv_obj_t *kb = lv_keyboard_create(lv_scr_act());
-    lv_obj_set_style_text_font(kb, STYLE_FONT_MEDIUM, LV_STATE_DEFAULT | LV_PART_ITEMS);
+    lv_obj_set_style_text_font(kb, STYLE_FONT_SMALL, LV_STATE_DEFAULT | LV_PART_ITEMS);
     lv_obj_set_style_border_color(kb, STYLE_GRAY, LV_STATE_DEFAULT | LV_PART_ITEMS);
     lv_obj_set_style_border_opa(kb, LV_OPA_MAX, LV_STATE_DEFAULT | LV_PART_ITEMS);
     lv_obj_set_style_border_width(kb, 2, LV_STATE_DEFAULT | LV_PART_ITEMS);
     lv_obj_set_style_bg_color(kb, lv_color_make(0, 0, 0), LV_STATE_DEFAULT | LV_PART_ITEMS | LV_PART_MAIN);
     lv_keyboard_set_textarea(kb, ta);
-    lv_obj_set_size(kb, LV_HOR_RES, LV_VER_RES - 64 - 40);
+    lv_obj_set_size(kb, LV_HOR_RES, LV_VER_RES - 64);
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_keyboard_set_map(kb, LV_KEYBOARD_MODE_SPECIAL, (const char **)kb_map_spec, kb_ctrl_spec_map);
-    view_register_object_default_callback(kb, PASSWORD_KB_ID);
+    view_register_object_default_callback(kb, KEYBOARD_ID);
     pdata->keyboard = kb;
 }
 
@@ -172,9 +175,6 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
     struct page_data *pdata   = state;
     model_updater_t   updater = pman_get_user_data(handle);
     model_t          *pmodel  = model_updater_read(updater);
-
-    msg.user_msg  = &view_cmsg;
-    view_cmsg.tag = VIEW_CONTROLLER_MESSAGE_TAG_NOTHING;
 
     switch (event.tag) {
         case PMAN_EVENT_TAG_LVGL: {
@@ -193,7 +193,7 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
 
                 case LV_EVENT_VALUE_CHANGED: {
                     switch (obj_data->id) {
-                        case PASSWORD_KB_ID: {
+                        case KEYBOARD_ID: {
                             const char *string = lv_textarea_get_text(pdata->textarea);
                             size_t      len    = strlen(string);
                             if (len >= 8 || len == 0) {
@@ -209,15 +209,19 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
                 }
                 case LV_EVENT_READY: {
                     switch (obj_data->id) {
-                        case PASSWORD_KB_ID: {
+                        case KEYBOARD_ID: {
                             const char *string = lv_textarea_get_text(pdata->textarea);
                             size_t      len    = strlen(string);
-                            if (len > 0 && len < 8) {
+                            if (len < 8) {
                                 lv_obj_set_style_border_color(pdata->textarea, STYLE_RED, LV_STATE_DEFAULT);
                             } else {
-                                strcpy(view_cmsg.as.connect_to.ssid, pdata->ssid);
-                                strcpy(view_cmsg.as.connect_to.psk, string);
-                                view_cmsg.tag = VIEW_CONTROLLER_MESSAGE_TAG_CONNECT_TO;
+                                view_controller_msg_t *cmsg = view_controller_msg(
+                                    (view_controller_msg_t){.tag = VIEW_CONTROLLER_MESSAGE_TAG_CONNECT_TO});
+                                strcpy(cmsg->as.connect_to.ssid, pdata->ssid);
+                                strcpy(cmsg->as.connect_to.psk, string);
+                                ESP_LOGI(TAG, "Connection request %s %s", cmsg->as.connect_to.ssid,
+                                         cmsg->as.connect_to.psk);
+                                msg.user_msg  = cmsg;
                                 msg.stack_msg = PMAN_STACK_MSG_BACK();
                             }
                             break;

@@ -1,3 +1,4 @@
+#include <time.h>
 #include "FreeRTOS.h"
 #include "model/updater.h"
 #include "task.h"
@@ -26,6 +27,11 @@ void app_main(void *arg) {
     persistance_load(&model);
     view_init(updater, controller_process_message, sdl_display_flush, sdl_mouse_read);
     controller_init(updater);
+
+
+    struct tm tm = {.tm_mday = 8, .tm_mon = 8, .tm_year = 123};
+    model.config.num_alarms = 1;
+    model.config.alarms[0].timestamp = mktime(&tm);
 
     ESP_LOGI(TAG, "Begin main loop");
     for (;;) {

@@ -5,7 +5,8 @@
 #include "view.h"
 
 
-void view_common_set_hidden(lv_obj_t *obj, int hidden);
+void                   view_common_set_hidden(lv_obj_t *obj, int hidden);
+view_controller_msg_t *view_controller_msg(view_controller_msg_t msg);
 
 
 #endif

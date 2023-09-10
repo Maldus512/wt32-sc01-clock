@@ -15,18 +15,18 @@
 #include "controller/gui.h"
 #include "controller/persistance.h"
 
-static const char *TAG = "Main";
+static const char *TAG   = "Main";
+static mut_model_t model = {0};
+
 
 void app_main(void) {
-    mut_model_t model = {0};
-
     tft_init(standby_poke);
     storage_init();
 
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
     sntp_init();
-
+    
     model_updater_t updater = model_updater_init(&model);
     persistance_load(&model);
     view_init(updater, controller_process_message, disp_driver_flush, tft_touch_read_cb);
@@ -35,6 +35,6 @@ void app_main(void) {
     ESP_LOGI(TAG, "Begin main loop");
     for (;;) {
         controller_manage(updater);
-        vTaskDelay(pdMS_TO_TICKS(2));
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }

@@ -1,1 +1,1 @@
-Template for esp32 projects with UI.
+# Desktop Clock for WT32SC01
