@@ -1,6 +1,8 @@
 # Custom
 tmp
 .simulator_db.json
+*.stl
+*.scad
 
 # Scons
 .sconsign.dblite
