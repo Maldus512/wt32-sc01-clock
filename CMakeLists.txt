@@ -8,3 +8,5 @@ add_definitions(-DSPI_HOST_MAX=SPI3_HOST)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(wt32sc01-clock)
+
+target_add_binary_data(wt32sc01-clock.elf "webapp/index.html" TEXT)

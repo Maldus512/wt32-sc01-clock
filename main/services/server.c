@@ -13,6 +13,7 @@
 static esp_err_t firmware_update_put_handler(httpd_req_t *req);
 static void      set_firmware_update_state(firmware_update_state_tag_t state);
 static void      firmware_update_failed(httpd_req_t *req, firmware_update_failure_code_t code, esp_err_t error);
+static esp_err_t home_get_handler(httpd_req_t *req);
 
 
 static const char             *TAG                   = "Server";
@@ -44,13 +45,20 @@ void *server_start(void) {
     config.task_priority    = 1;
     config.stack_size       = APP_CONFIG_TASK_SIZE * 10;
     config.lru_purge_enable = true;
-    config.max_uri_handlers = 3;
+    config.max_uri_handlers = 2;
     config.max_open_sockets = CONFIG_LWIP_MAX_SOCKETS - 3;
 
     /* Start the httpd server */
     ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
     esp_err_t res = httpd_start(&server, &config);
     if (res == ESP_OK) {
+        httpd_uri_t home = {
+            .uri     = "/",
+            .method  = HTTP_GET,
+            .handler = home_get_handler,
+        };
+        httpd_register_uri_handler(server, &home);
+
         // PUT /firmware_update
         const httpd_uri_t system_firmware_update = {
             .uri     = (const char *)"/firmware_update",
@@ -168,6 +176,18 @@ static esp_err_t firmware_update_put_handler(httpd_req_t *req) {
     httpd_resp_send(req, "", HTTPD_RESP_USE_STRLEN);
     httpd_resp_set_hdr(req, "Connection", "close");
     set_firmware_update_state(FIRMWARE_UPDATE_STATE_TAG_SUCCESS);
+    return ESP_OK;
+}
+
+
+static esp_err_t home_get_handler(httpd_req_t *req) {
+    extern const unsigned char index_html_start[] asm("_binary_index_html_start");
+    extern const unsigned char index_html_end[] asm("_binary_index_html_end");
+    const size_t               index_html_size = (index_html_end - index_html_start);
+
+    //httpd_resp_set_hdr(req, "Content-encoding", "gzip");
+    httpd_resp_send(req, (const char *)index_html_start, index_html_size);
+
     return ESP_OK;
 }
 

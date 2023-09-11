@@ -1,0 +1,36 @@
+<html>
+
+<head></head>
+
+<body style="height: 100%; width: 100%;">
+    <div
+        style="border-radius: 16px; border: 4px solid greenyellow; padding: 32px; width: fit-content; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <label for="binary">Choose a binary file:</label>
+        </br>
+        <input type="file" id="binary" name="binary" accept="binary/bin" />
+        </br>
+        <p id="status"></p>
+    </div>
+
+    <script type="text/javascript">
+        document.getElementById("binary").onchange = function () {
+            let inputBinary = document.getElementById("binary");
+            let paragraphStatus = document.getElementById("status");
+
+            paragraphStatus.innerHTML = "Updating device...";
+            const fileToUpload = inputBinary.files[0];
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", '/firmware_update');
+            xhr.onload = () => {
+                paragraphStatus.innerHTML = "Device updated successfully";
+            };
+            xhr.onerror = () => {
+                paragraphStatus.innerHTML = "Device updated failed";
+            };
+            xhr.setRequestHeader("Content-Type", fileToUpload.type);
+            xhr.send(fileToUpload);
+        };
+    </script>
+</body>
+
+</html>

@@ -23,10 +23,14 @@ void app_main(void) {
     tft_init(standby_poke);
     storage_init();
 
+    setenv("TZ", "UTC-1CEST,M3.5.0,M10.5.0/3", 1);
+    tzset();
+
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
     sntp_init();
-    
+
+
     model_updater_t updater = model_updater_init(&model);
     persistance_load(&model);
     view_init(updater, controller_process_message, disp_driver_flush, tft_touch_read_cb);

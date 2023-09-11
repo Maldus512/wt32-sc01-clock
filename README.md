@@ -51,3 +51,16 @@ This is achieved by plugging in stubs for every hardware-related function (found
 The compilation for the simulated application is handled by [SCons](https://scons.org/); it requires the tool itself, a C compiler and the SDL2 library.
 
 It can be run with the command `scons run`.
+
+## Updating the Device
+
+Starting from version 0.1.1 the local webserver exposes a simple webpage that includes an updating interface.
+For previous versions the device can be still updated via an HTTP API. 
+
+Assuming that the binary `wt32sc01-clock.bin` has been downloaded on the host machine, it is sufficient to run the following command on Linux:
+
+```
+curl -X PUT <ip>/firmware_update --data-binary @./wt32sc01-clock.bin
+```
+
+Where `<ip>` is the ip address of the device.
