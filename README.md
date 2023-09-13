@@ -57,7 +57,7 @@ It can be run with the command `scons run`.
 Starting from version 0.1.1 the local webserver exposes a simple webpage that includes an updating interface.
 For previous versions the device can be still updated via an HTTP API. 
 
-Assuming that the binary `wt32sc01-clock.bin` has been downloaded on the host machine, it is sufficient to run the following command on Linux:
+Assuming that the binary `wt32sc01-clock.bin` has been downloaded on the host machine, it is sufficient to run the following command:
 
 ```
 curl -X PUT <ip>/firmware_update --data-binary @./wt32sc01-clock.bin

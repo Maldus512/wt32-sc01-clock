@@ -7,6 +7,8 @@
 #include "persistance.h"
 #include "services/network.h"
 #include "services/server.h"
+#include "services/google_calendar.h"
+#include "services/system_time.h"
 #include "peripherals/system.h"
 #include <esp_log.h>
 
@@ -19,6 +21,7 @@ void controller_init(model_updater_t updater) {
 
     network_init();
     server_init();
+    google_calendar_init();
 
     observer_init(model_updater_read(updater));
     network_start_sta();
@@ -61,7 +64,14 @@ void controller_process_message(pman_handle_t handle, void *msg) {
 
 
 void controller_manage(model_updater_t updater) {
-    model_t *pmodel = model_updater_read(updater);
+    static unsigned long timestamp = 0;
+    model_t             *pmodel    = model_updater_read(updater);
+
+    if (model_get_wifi_state(pmodel) == WIFI_STATE_CONNECTED && is_expired(timestamp, get_millis(), 10000UL)) {
+        ESP_LOGI(TAG, "Attempting http request");
+        google_calendar_example();
+        timestamp = get_millis();
+    }
 
     network_get_state(updater);
     if (network_get_scan_result(updater)) {
