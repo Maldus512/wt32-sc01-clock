@@ -39,9 +39,24 @@ Other notable modules should be considered part of the controller, but are coher
 
 ## Building from Source
 
+First, clone this repository and its submodules:
+
+```sh
+git clone --recursive git@github.com:Maldus512/wt32-sc01-clock.git
+```
+
 The project is based on ESP-IDF. Instructions on how to install the development environment can be found [here](https://docs.espressif.com/projects/esp-idf/en/v4.4.5/esp32/get-started/index.html#get-started-get-prerequisites).
 
-The version required is ESP-IDF v4.4.X due to constraints on the display driver component.
+The version required is ESP-IDF v4.4.x due to constraints on the display driver component. Currently, v4.4.2 has been used to develop the project.
+
+Once you have ESP-IDF set up, source the environment and from the main project folder run:
+
+```sh
+source [PATH_TO_ESP-IDF_REPO]/export.sh # this is needed only once per shell
+idf.py build
+```
+
+If the compilation is successful, you will find the built binary in `build/wt32sc01-clock.bin`
 
 ## Simulator
 
