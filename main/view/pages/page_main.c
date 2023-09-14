@@ -338,7 +338,7 @@ static void open_page(pman_handle_t handle, void *state) {
     pdata->settings.lbl_normal_brightness = lbl;
 
     slider = lv_slider_create(obj_settings);
-    lv_slider_set_range(slider, 0, 100);
+    lv_slider_set_range(slider, 5, 100);
     lv_obj_set_size(slider, 200, 32);
     lv_obj_align(slider, LV_ALIGN_TOP_RIGHT, -32, 112);
     view_register_object_default_callback(slider, SLIDER_NORMAL_BRIGHTNESS_ID);
