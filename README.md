@@ -41,7 +41,7 @@ Other notable modules should be considered part of the controller, but are coher
 
 The project is based on ESP-IDF. Instructions on how to install the development environment can be found [here](https://docs.espressif.com/projects/esp-idf/en/v4.4.5/esp32/get-started/index.html#get-started-get-prerequisites).
 
-The version required is ESP-IDF v4.4.0 due to constraints on the display driver component.
+The version required is ESP-IDF v4.4.X due to constraints on the display driver component.
 
 ## Simulator
 
