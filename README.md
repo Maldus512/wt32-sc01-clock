@@ -9,33 +9,33 @@ Made for [WT32-SC01](https://www.amazon.it/AMIUHOUN-WT32-SC01-Multi-Touch-Capaci
 
 The project is organized in the following folders
 
- - `assets`: static assets (e.g. images).
- - `components`: software dependencies.
- - `docs`: technical documentation.
- - `main`: application firmware.
- - `simulator`: software related to host simulation of the application.
- - `tools`: miscellaneous tooling: custom build tools and 3d model generator.
+- `assets`: static assets (e.g. images).
+- `components`: software dependencies.
+- `docs`: technical documentation.
+- `main`: application firmware.
+- `simulator`: software related to host simulation of the application.
+- `tools`: miscellaneous tooling: custom build tools and 3d model generator.
 
 ## Application Structure
 
 The application follows a flavor of the MVC design pattern, thus it is mostly split into three components:
 
- - `main/model`: the model contains the business logic (data logic under `model` and application logic under `updater`) of the application. It has no meaningful dependencies.
- - `main/view`: the view handles the UI logic: visualization of the state and reception of user input (via touch screen). It depends on the model for reading the state and sending transforming signals.
- - `main/controller`: the controller includes everything else; it is the glue that holds logic and hardware together. It depends on every other component. 
+- `main/model`: the model contains the business logic (data logic under `model` and application logic under `updater`) of the application. It has no meaningful dependencies.
+- `main/view`: the view handles the UI logic: visualization of the state and reception of user input (via touch screen). It depends on the model for reading the state and sending transforming signals.
+- `main/controller`: the controller includes everything else; it is the glue that holds logic and hardware together. It depends on every other component.
 
 Other notable modules should be considered part of the controller, but are coherent enought to deserve their independence:
- 
- - `main/config`: configuration headers.
- - `main/peripherals`: hardware-related functions.
- - `main/services`: non-dependencies.
+
+- `main/config`: configuration headers.
+- `main/peripherals`: hardware-related functions.
+- `main/services`: non-dependencies.
 
 ### Components
 
- - `components/c-page-manager/`: a page stack for the UI.
- - `components/c-watcher`: data structure for observer patterns.
- - `lvgl`: an excellent low level virtual graphic libarry.
- - `lvgl_esp32_drivers`: repository for the touch screen driver.
+- `components/c-page-manager/`: a page stack for the UI.
+- `components/c-watcher`: data structure for observer patterns.
+- `lvgl`: an excellent low level virtual graphic libarry.
+- `lvgl_esp32_drivers`: repository for the touch screen driver.
 
 ## Building from Source
 
@@ -55,11 +55,11 @@ It can be run with the command `scons run`.
 ## Updating the Device
 
 Starting from version 0.1.1 the local webserver exposes a simple webpage that includes an updating interface.
-For previous versions the device can be still updated via an HTTP API. 
+For previous versions the device can be still updated via an HTTP API.
 
 Assuming that the binary `wt32sc01-clock.bin` has been downloaded on the host machine, it is sufficient to run the following command:
 
-```
+``` sh
 curl -X PUT <ip>/firmware_update --data-binary @./wt32sc01-clock.bin
 ```
 
