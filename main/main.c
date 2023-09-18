@@ -1,8 +1,8 @@
+#include <time.h>
 #include <driver/i2c.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
-#include "esp_sntp.h"
 #include "esp_log.h"
 #include "peripherals/tft.h"
 #include "lvgl_helpers.h"
@@ -25,11 +25,6 @@ void app_main(void) {
 
     setenv("TZ", "UTC-1CEST,M3.5.0,M10.5.0/3", 1);
     tzset();
-
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
-
 
     model_updater_t updater = model_updater_init(&model);
     persistance_load(&model);

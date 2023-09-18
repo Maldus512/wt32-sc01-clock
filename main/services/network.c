@@ -12,9 +12,10 @@
 #include "network.h"
 #include "server.h"
 #include "model/updater.h"
+#include "esp_sntp.h"
 
 
-static void      network_event_handler(void *arg, esp_event_base_t event_base, int event_id, void *event_data);
+static void      network_event_handler(void *arg, esp_event_base_t event_base, long int event_id, void *event_data);
 static void      network_connected(uint32_t ip);
 static void      network_disconnected(void);
 static void      network_connecting(void);
@@ -59,6 +60,10 @@ void network_init(void) {
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, network_event_handler, NULL));
 
     esp_netif_create_default_wifi_sta();
+
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_init();
 }
 
 
@@ -143,7 +148,7 @@ void network_get_state(model_updater_t updater) {
 }
 
 
-static void network_event_handler(void *arg, esp_event_base_t event_base, int event_id, void *event_data) {
+static void network_event_handler(void *arg, esp_event_base_t event_base, long int event_id, void *event_data) {
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
             case WIFI_EVENT_STA_START: {
@@ -268,14 +273,14 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int ev
             }
 
             default:
-                ESP_LOGI(TAG, "Unknown WiFi event %i", event_id);
+                ESP_LOGI(TAG, "Unknown WiFi event %li", event_id);
                 break;
         }
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         switch (event_id) {
             case IP_EVENT_STA_GOT_IP: {
                 ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-                ESP_LOGI(TAG, "Got ip:%s", ip4addr_ntoa((const ip4_addr_t *)&event->ip_info.ip));
+                // ESP_LOGI(TAG, "Got ip:%s", ip4addr_ntoa((const ip4_addr_t *)&event->ip_info.ip));
 
                 xEventGroupClearBits(wifi_event_group, EVENT_STOPPED);
                 network_connected(event->ip_info.ip.addr);
@@ -283,7 +288,7 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int ev
             }
 
             default:
-                ESP_LOGI(TAG, "Unknown IP event %i", event_id);
+                ESP_LOGI(TAG, "Unknown IP event %li", event_id);
                 break;
         }
     }

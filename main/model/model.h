@@ -12,7 +12,7 @@
         assert(pmodel != NULL);                                                                                        \
         return pmodel->field;                                                                                          \
     }
-#define IP_PART(ip, p) ((ip >> (8 * p)) & 0xFF)
+#define IP_PART(ip, p) ((uint8_t)((ip >> (8 * p)) & 0xFF))
 
 #define MAX_SSID_SIZE         33
 #define MAX_AP_SCAN_LIST_SIZE 16

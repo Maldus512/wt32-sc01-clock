@@ -4,9 +4,10 @@
 
 #include "lvgl_tft/disp_spi.h"
 #include "lvgl_touch/tp_spi.h"
-
+#include "hardwareprofile.h"
 #include "lvgl_spi_conf.h"
-
+#include "driver/ledc.h"
+#include "tft.h"
 #include "lvgl_i2c/i2c_manager.h"
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -23,6 +24,29 @@ static void (*on_touch_cb)(void);
 
 void tft_init(void (*touch_cb)(void)) {
     on_touch_cb = touch_cb;
+
+
+    ledc_timer_config_t ledc_timer = {
+        .duty_resolution = LEDC_TIMER_8_BIT,        // resolution of PWM duty
+        .freq_hz         = 2000,                    // frequency of PWM signal
+        .speed_mode      = LEDC_LOW_SPEED_MODE,     // timer mode
+        .timer_num       = LEDC_TIMER_0,            // timer index
+        .clk_cfg         = LEDC_AUTO_CLK,           // Auto select the source clock
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+
+    ledc_channel_config_t ledc_channel = {
+        .channel    = LEDC_CHANNEL_0,
+        .duty       = 0,
+        .gpio_num   = HAP_LCD_BACKLIGHT,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .hpoint     = 0,
+        .timer_sel  = LEDC_TIMER_0,
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
+    ledc_fade_func_install(0);
+    tft_backlight_set(100);
+
 
     lvgl_i2c_init(I2C_NUM_0);
 
@@ -41,7 +65,6 @@ void tft_init(void (*touch_cb)(void)) {
                          DISP_SPI_IO2, DISP_SPI_IO3);
 
     disp_spi_add_device(TFT_SPI_HOST);
-    backlight_handle = disp_driver_init();
 
 #if defined(CONFIG_LV_TOUCH_CONTROLLER_FT81X)
     touch_driver_init();
@@ -105,7 +128,8 @@ void tft_init(void (*touch_cb)(void)) {
 
 
 void tft_backlight_set(uint8_t percentage) {
-    disp_backlight_set(backlight_handle, percentage);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, percentage); //duty);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 }
 
 

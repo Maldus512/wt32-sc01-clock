@@ -107,7 +107,7 @@ static esp_err_t firmware_update_put_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x, request size %zu", update_partition->subtype,
+    ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%lx, request size %zu", update_partition->subtype,
              update_partition->address, req->content_len);
 
     // The following call takes about 1000ms

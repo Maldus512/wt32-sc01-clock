@@ -147,7 +147,8 @@ static void update_page(model_t *pmodel, struct page_data *pdata) {
         case FIRMWARE_UPDATE_STATE_TAG_FAILURE: {
             view_common_set_hidden(pdata->spinner, 1);
             view_common_set_hidden(pdata->btn_reset, 0);
-            lv_label_set_text_fmt(pdata->lbl_state, "%s (%i-0x%X)", "Update failed!", state.failure_code, state.error);
+            lv_label_set_text_fmt(pdata->lbl_state, "%s (%i-0x%X)", "Update failed!", state.failure_code,
+                                  (unsigned int)state.error);
             break;
         }
     }
