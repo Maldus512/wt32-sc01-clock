@@ -39,6 +39,7 @@ static const char *TAG = "PageAlarm";
 
 
 static void *create_page(pman_handle_t handle, void *extra) {
+    (void)TAG;
     (void)handle;
     (void)extra;
 

@@ -25,6 +25,7 @@ enum {
     TIMER_ALARMS_ID,
     OBJ_FLAG_ID,
     BTN_CONNECT_ID,
+    BTN_TODAY_ID,
     BTN_REFRESH_ID,
     BTN_BELL_ID,
     CB_MILITARY_TIME_ID,
@@ -32,6 +33,7 @@ enum {
     SLIDER_STANDBY_BRIGHTNESS_ID,
     SLIDER_STANDBY_DELAY_ID,
     CALENDAR_ID,
+    CALENDAR_HEADER_ID,
     WATCHER_WIFI_ID,
     TAB_ID,
 };
@@ -66,6 +68,9 @@ struct page_data {
 
     struct {
         lv_obj_t *calendar;
+        lv_obj_t *btn_today;
+
+        lv_calendar_date_t showed_date;
     } alarms;
 
     struct {
@@ -92,7 +97,7 @@ struct page_data {
 };
 
 
-static void update_time(model_t *pmodel, struct page_data *pdata, uint8_t calendar);
+static void update_time(model_t *pmodel, struct page_data *pdata);
 static void update_wifi_list(model_t *pmodel, struct page_data *pdata);
 static void update_menu(struct page_data *pdata, int32_t x);
 static void update_settings(model_t *pmodel, struct page_data *pdata);
@@ -111,12 +116,17 @@ static void *create_page(pman_handle_t handle, void *extra) {
     struct page_data *pdata = lv_mem_alloc(sizeof(struct page_data));
     assert(pdata != NULL);
 
-    pdata->timer_time   = PMAN_REGISTER_TIMER_ID(handle, 500UL, TIMER_TIME_ID);
-    pdata->timer_alarms = PMAN_REGISTER_TIMER_ID(handle, 10000UL, TIMER_ALARMS_ID);
-    pdata->menu_state   = MENU_STATE_CLOSED;
-    pdata->tab          = 0;
-
+    pdata->timer_time      = PMAN_REGISTER_TIMER_ID(handle, 500UL, TIMER_TIME_ID);
+    pdata->timer_alarms    = PMAN_REGISTER_TIMER_ID(handle, 10000UL, TIMER_ALARMS_ID);
+    pdata->menu_state      = MENU_STATE_CLOSED;
+    pdata->tab             = 0;
     pdata->nth_alarm_today = 0;
+
+    time_t     now                  = time(NULL);
+    struct tm *tm_struct            = localtime(&now);
+    pdata->alarms.showed_date.day   = tm_struct->tm_mday;
+    pdata->alarms.showed_date.month = tm_struct->tm_mon + 1;
+    pdata->alarms.showed_date.year  = tm_struct->tm_year + 1900;
 
     return pdata;
 }
@@ -244,7 +254,7 @@ static void open_page(pman_handle_t handle, void *state) {
     lv_obj_set_size(obj_alarms, LV_PCT(100), LV_PCT(100));
 
     lv_obj_t *calendar = lv_calendar_create(obj_alarms);
-    lv_obj_set_size(calendar, 380, LV_PCT(100));
+    lv_obj_set_size(calendar, 360, LV_PCT(100));
     lv_obj_align(calendar, LV_ALIGN_RIGHT_MID, 0, 0);
     lv_obj_set_style_text_font(calendar, STYLE_FONT_SMALL, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_border_width(calendar, 0, LV_STATE_DEFAULT);
@@ -270,7 +280,8 @@ static void open_page(pman_handle_t handle, void *state) {
 
     lv_calendar_set_highlighted_dates(calendar, highlighted_days, count);
 
-    lv_calendar_header_arrow_create(calendar);
+    lv_obj_t *calendar_header = lv_calendar_header_arrow_create(calendar);
+    view_register_object_default_callback(calendar_header, CALENDAR_HEADER_ID);
     view_register_object_default_callback(calendar, CALENDAR_ID);
 
     lv_obj_t *btnmatrix = lv_calendar_get_btnmatrix(calendar);
@@ -278,6 +289,17 @@ static void open_page(pman_handle_t handle, void *state) {
     lv_obj_set_style_border_color(btnmatrix, STYLE_MAIN_COLOR, LV_PART_ITEMS | LV_STATE_PRESSED);
 
     pdata->alarms.calendar = calendar;
+
+    lv_obj_t *btn_today = lv_btn_create(obj_alarms);
+    lv_obj_set_size(btn_today, 48, 48);
+    lbl = lv_label_create(btn_today);
+    lv_label_set_text(lbl, LV_SYMBOL_PREV);
+    lv_obj_set_style_text_font(lbl, STYLE_FONT_SMALL, LV_STATE_DEFAULT);
+    lv_obj_center(lbl);
+    lv_obj_align(btn_today, LV_ALIGN_BOTTOM_LEFT, -28, -8);
+    view_register_object_default_callback(btn_today, BTN_TODAY_ID);
+    pdata->alarms.btn_today = btn_today;
+
 
     /* WiFi tab */
     lv_obj_t *obj_wifi = lv_obj_create(tab_wifi);
@@ -420,7 +442,7 @@ static void open_page(pman_handle_t handle, void *state) {
     }
     update_menu(pdata, x);
 
-    update_time(pmodel, pdata, 1);
+    update_time(pmodel, pdata);
     update_settings(pmodel, pdata);
     update_wifi_list(pmodel, pdata);
     update_wifi_state(pmodel, pdata);
@@ -442,7 +464,7 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
         case PMAN_EVENT_TAG_TIMER: {
             switch ((uintptr_t)pman_timer_get_user_data(event.as.timer)) {
                 case TIMER_TIME_ID:
-                    update_time(pmodel, pdata, 0);
+                    update_time(pmodel, pdata);
                     break;
 
                 case TIMER_ALARMS_ID:
@@ -494,8 +516,7 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
                             lv_calendar_date_t *date = lv_mem_alloc(sizeof(lv_calendar_date_t));
                             assert(date != NULL);
 
-                            time_t    now_time = time(NULL);
-                            struct tm now_tm   = *localtime(&now_time);
+                            time_t now_time = time(NULL);
 
                             if (lv_calendar_get_pressed_date(pdata->alarms.calendar, date) == LV_RES_OK) {
                                 struct tm then_tm = {
@@ -511,6 +532,12 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
                                     msg.stack_msg = PMAN_STACK_MSG_PUSH_PAGE_EXTRA(&page_alarms, date);
                                 }
                             }
+                            break;
+                        }
+
+                        case CALENDAR_HEADER_ID: {
+                            pdata->alarms.showed_date = *lv_calendar_get_showed_date(pdata->alarms.calendar);
+                            update_time(pmodel, pdata);
                             break;
                         }
                     }
@@ -560,6 +587,17 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
                             }
 
                             update_menu(pdata, x);
+                            break;
+                        }
+
+                        case BTN_TODAY_ID: {
+                            time_t     now                  = time(NULL);
+                            struct tm *tm_struct            = localtime(&now);
+                            pdata->alarms.showed_date.day   = tm_struct->tm_mday;
+                            pdata->alarms.showed_date.month = tm_struct->tm_mon + 1;
+                            pdata->alarms.showed_date.year  = tm_struct->tm_year + 1900;
+
+                            update_time(pmodel, pdata);
                             break;
                         }
                     }
@@ -624,7 +662,7 @@ static void destroy_page(void *state, void *extra) {
 }
 
 
-static void update_time(model_t *pmodel, struct page_data *pdata, uint8_t calendar) {
+static void update_time(model_t *pmodel, struct page_data *pdata) {
     time_t     now       = time(NULL);
     struct tm *tm_struct = localtime(&now);
 
@@ -649,10 +687,32 @@ static void update_time(model_t *pmodel, struct page_data *pdata, uint8_t calend
 
     view_common_set_hidden(pdata->lbl_ampm, model_get_military_time(pmodel));
 
-    if (pdata->menu_state == MENU_STATE_CLOSED || calendar) {
+    lv_calendar_date_t today = *lv_calendar_get_today_date(pdata->alarms.calendar);
+    // The current day changed
+    if (today.day != tm_struct->tm_mday || today.month != tm_struct->tm_mon + 1 ||
+        today.year != tm_struct->tm_year + 1900) {
         lv_calendar_set_today_date(pdata->alarms.calendar, tm_struct->tm_year + 1900, tm_struct->tm_mon + 1,
                                    tm_struct->tm_mday);
-        lv_calendar_set_showed_date(pdata->alarms.calendar, tm_struct->tm_year + 1900, tm_struct->tm_mon + 1);
+
+        // Also snap the calendar to the current date (if not in use)
+        if (pdata->menu_state == MENU_STATE_CLOSED) {
+            pdata->alarms.showed_date.day   = tm_struct->tm_mday;
+            pdata->alarms.showed_date.month = tm_struct->tm_mon + 1;
+            pdata->alarms.showed_date.year  = tm_struct->tm_year + 1900;
+        }
+    }
+
+    lv_calendar_date_t showed_date = *lv_calendar_get_showed_date(pdata->alarms.calendar);
+    if (showed_date.month != pdata->alarms.showed_date.month || showed_date.year != pdata->alarms.showed_date.year) {
+        lv_calendar_set_showed_date(pdata->alarms.calendar, pdata->alarms.showed_date.year,
+                                    pdata->alarms.showed_date.month);
+    }
+
+    if (tm_struct->tm_mon + 1 == pdata->alarms.showed_date.month &&
+        tm_struct->tm_year + 1900 == pdata->alarms.showed_date.year) {
+        view_common_set_hidden(pdata->alarms.btn_today, 1);
+    } else {
+        view_common_set_hidden(pdata->alarms.btn_today, 0);
     }
 }
 

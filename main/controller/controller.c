@@ -68,8 +68,8 @@ void controller_manage(model_updater_t updater) {
     model_t             *pmodel    = model_updater_read(updater);
 
     if (model_get_wifi_state(pmodel) == WIFI_STATE_CONNECTED && is_expired(timestamp, get_millis(), 10000UL)) {
-        ESP_LOGI(TAG, "Attempting http request");
-        google_calendar_example();
+        // ESP_LOGI(TAG, "Attempting http request");
+        // google_calendar_example();
         timestamp = get_millis();
     }
 
