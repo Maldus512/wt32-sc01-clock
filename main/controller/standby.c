@@ -20,7 +20,6 @@ void standby_manage(model_t *pmodel) {
     switch (standby_state) {
         case STANDBY_STATE_OFF:
             if (is_expired(last_activity_ts, get_millis(), model_get_standby_delay_seconds(pmodel) * 1000UL)) {
-                tft_backlight_set(model_get_standby_brightness(pmodel));
                 last_activity_ts = get_millis();
                 standby_state    = STANDBY_STATE_ON;
             }
@@ -32,6 +31,7 @@ void standby_manage(model_t *pmodel) {
             break;
 
         case STANDBY_STATE_ON:
+            tft_backlight_set(model_get_standby_brightness(pmodel));
             break;
     }
 }

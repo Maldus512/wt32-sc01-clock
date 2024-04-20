@@ -46,6 +46,14 @@ typedef enum {
 } firmware_update_failure_code_t;
 
 
+typedef enum {
+    HTTP_REQUEST_STATE_NONE = 0,
+    HTTP_REQUEST_STATE_DONE,
+    HTTP_REQUEST_STATE_WAITING,
+    HTTP_REQUEST_STATE_ERROR,
+} http_request_state_t;
+
+
 typedef struct {
     firmware_update_state_tag_t    tag;
     firmware_update_failure_code_t failure_code;
@@ -66,6 +74,9 @@ struct model {
         uint8_t  normal_brightness;
         uint8_t  standby_brightness;
         uint16_t standby_delay_seconds;
+        uint8_t  night_mode;
+        uint32_t night_mode_start;
+        uint32_t night_mode_end;
     } config;
 
     struct {
@@ -78,7 +89,14 @@ struct model {
         wifi_state_t            wifi_state;
         uint32_t                ip_addr;
         char                    ssid[MAX_SSID_SIZE];
-        firmware_update_state_t firmware_update_state;
+        firmware_update_state_t server_firmware_update_state;
+        firmware_update_state_t client_firmware_update_state;
+
+        uint8_t              new_release_notified;
+        http_request_state_t latest_release_request_state;
+        uint16_t             latest_release_major;
+        uint16_t             latest_release_minor;
+        uint16_t             latest_release_patch;
     } run;
 };
 
@@ -94,19 +112,23 @@ size_t      model_get_active_alarms(model_t *pmodel);
 uint8_t     model_is_alarm_expired(model_t *pmodel, size_t alarm_num);
 uint8_t     model_get_nth_alarm_for_day(model_t *pmodel, size_t *alarm_num, size_t nth, uint16_t day, uint16_t month,
                                         uint16_t year);
-uint8_t model_get_nth_alarm(model_t *pmodel, size_t *alarm_num, size_t nth);
+uint8_t     model_get_nth_alarm(model_t *pmodel, size_t *alarm_num, size_t nth);
+void        model_set_latest_release_state(mut_model_t *pmodel, http_request_state_t request_state, uint16_t major,
+                                           uint16_t minor, uint16_t patch);
+void        model_set_night_mode(mut_model_t *pmodel, uint8_t night_mode);
+uint8_t     model_get_standby_brightness(model_t *pmodel);
+uint8_t     model_is_new_release_available(model_t *pmodel);
+firmware_update_state_t model_get_firmware_update_state(model_t *pmodel);
 
 
 GETTER(military_time, config.military_time);
 GETTER(normal_brightness, config.normal_brightness);
-GETTER(standby_brightness, config.standby_brightness);
 GETTER(standby_delay_seconds, config.standby_delay_seconds);
 
 GETTER(wifi_state, run.wifi_state);
 GETTER(scanning, run.scanning);
 GETTER(available_networks_count, run.ap_list_size);
 GETTER(ip_addr, run.ip_addr);
-GETTER(firmware_update_state, run.firmware_update_state);
 
 
 #endif

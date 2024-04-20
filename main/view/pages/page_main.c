@@ -28,13 +28,18 @@ enum {
     BTN_TODAY_ID,
     BTN_REFRESH_ID,
     BTN_BELL_ID,
+    BTN_PARAMETER_ID,
+    BTN_NIGHT_MODE_ID,
+    BTN_UPDATE_ID,
     CB_MILITARY_TIME_ID,
+    CB_NIGHT_MODE_ID,
     SLIDER_NORMAL_BRIGHTNESS_ID,
     SLIDER_STANDBY_BRIGHTNESS_ID,
     SLIDER_STANDBY_DELAY_ID,
     CALENDAR_ID,
     CALENDAR_HEADER_ID,
     WATCHER_WIFI_ID,
+    WATCHER_UPDATE_ID,
     TAB_ID,
 };
 
@@ -43,6 +48,13 @@ typedef enum {
     MENU_STATE_CLOSED = 0,
     MENU_STATE_OPENED,
 } menu_state_t;
+
+
+typedef enum {
+    PARAMETER_PAGE_BRIGHTNESS = 0,
+    PARAMETER_PAGE_NIGHT_MODE,
+#define PARAMETER_PAGE_NUM 2
+} parameter_page_t;
 
 
 struct page_data {
@@ -74,17 +86,25 @@ struct page_data {
     } alarms;
 
     struct {
+        lv_obj_t *lbl_page;
+
+        lv_obj_t *obj_parlist;
         lv_obj_t *cb_military_time;
+        lv_obj_t *cb_night_mode;
         lv_obj_t *lbl_normal_brightness;
         lv_obj_t *lbl_standby_brightness;
         lv_obj_t *lbl_standby_delay;
         lv_obj_t *slider_normal_brightness;
         lv_obj_t *slider_standby_brightness;
         lv_obj_t *slider_standby_delay;
+        lv_obj_t *btn_night_mode;
+
+        parameter_page_t page;
     } settings;
 
     struct {
         lv_obj_t *qr;
+        lv_obj_t *btn_available_update;
     } info;
 
     size_t tab;
@@ -104,6 +124,8 @@ static void update_settings(model_t *pmodel, struct page_data *pdata);
 static void update_wifi_state(model_t *pmodel, struct page_data *pdata);
 static void btns_value_changed_event_cb(lv_event_t *e);
 static void update_alarms(model_t *pmodel, struct page_data *pdata, uint8_t next);
+static void create_parameter_page(model_t *pmodel, struct page_data *pdata);
+static void update_info(model_t *pmodel, struct page_data *pdata);
 
 
 static const char *TAG = "PageMain";
@@ -128,12 +150,14 @@ static void *create_page(pman_handle_t handle, void *extra) {
     pdata->alarms.showed_date.month = tm_struct->tm_mon + 1;
     pdata->alarms.showed_date.year  = tm_struct->tm_year + 1900;
 
+    pdata->settings.page = PARAMETER_PAGE_BRIGHTNESS;
+
     return pdata;
 }
 
 
 static void open_page(pman_handle_t handle, void *state) {
-    lv_obj_t *lbl, *slider, *img, *btn;
+    lv_obj_t *lbl, *img, *btn;
 
     struct page_data *pdata   = state;
     model_updater_t   updater = pman_get_user_data(handle);
@@ -141,6 +165,10 @@ static void open_page(pman_handle_t handle, void *state) {
 
     VIEW_ADD_WATCHED_VARIABLE(&pmodel->run.scanning, WATCHER_WIFI_ID);
     VIEW_ADD_WATCHED_VARIABLE(&pmodel->run.wifi_state, WATCHER_WIFI_ID);
+    VIEW_ADD_WATCHED_VARIABLE(&pmodel->run.latest_release_request_state, WATCHER_UPDATE_ID);
+    VIEW_ADD_WATCHED_VARIABLE(&pmodel->run.latest_release_major, WATCHER_UPDATE_ID);
+    VIEW_ADD_WATCHED_VARIABLE(&pmodel->run.latest_release_minor, WATCHER_UPDATE_ID);
+    VIEW_ADD_WATCHED_VARIABLE(&pmodel->run.latest_release_patch, WATCHER_UPDATE_ID);
 
     pman_timer_resume(pdata->timer_time);
     pman_timer_resume(pdata->timer_alarms);
@@ -337,74 +365,42 @@ static void open_page(pman_handle_t handle, void *state) {
     lv_obj_set_style_pad_all(obj_settings, 0, LV_STATE_DEFAULT);
     lv_obj_set_size(obj_settings, LV_PCT(100), LV_PCT(100));
 
-    lv_obj_t *checkbox = lv_checkbox_create(obj_settings);
-    lv_obj_set_style_text_font(checkbox, STYLE_FONT_SMALL, LV_STATE_DEFAULT | LV_PART_MAIN);
-    lv_obj_set_style_text_font(checkbox, STYLE_FONT_SMALL, LV_STATE_DEFAULT | LV_PART_INDICATOR);
-    lv_obj_set_style_text_font(checkbox, STYLE_FONT_SMALL, LV_STATE_CHECKED | LV_PART_INDICATOR);
-    lv_checkbox_set_text(checkbox, "Military time");
-    lv_obj_align(checkbox, LV_ALIGN_TOP_LEFT, FLAG_WIDTH / 2 + 96, 32);
-    view_register_object_default_callback(checkbox, CB_MILITARY_TIME_ID);
-    pdata->settings.cb_military_time = checkbox;
-
     lbl = lv_label_create(obj_settings);
-    lv_obj_set_style_text_font(lbl, STYLE_FONT_TINY, LV_STATE_DEFAULT);
-    lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(lbl, 96);
-    lv_obj_align(lbl, LV_ALIGN_TOP_LEFT, 8, 112);
-    lv_label_set_text(lbl, "Brightness");
-    lv_obj_t *prev_lbl = lbl;
+    lv_obj_set_style_text_font(lbl, STYLE_FONT_SMALL, LV_STATE_DEFAULT);
+    lv_obj_align(lbl, LV_ALIGN_TOP_MID, 24, 24);
+    pdata->settings.lbl_page = lbl;
 
-    lbl = lv_label_create(obj_settings);
-    lv_obj_set_style_text_font(lbl, STYLE_FONT_TINY, LV_STATE_DEFAULT);
-    lv_obj_align_to(lbl, prev_lbl, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
-    pdata->settings.lbl_normal_brightness = lbl;
+    lv_obj_t *btn_left = lv_btn_create(obj_settings);
+    lv_obj_set_size(btn_left, 48, 48);
+    lbl = lv_label_create(btn_left);
+    lv_obj_set_style_text_font(lbl, STYLE_FONT_SMALL, LV_STATE_DEFAULT);
+    lv_label_set_text(lbl, LV_SYMBOL_LEFT);
+    lv_obj_center(lbl);
+    lv_obj_align(btn_left, LV_ALIGN_TOP_LEFT, 48, 12);
+    view_register_object_default_callback_with_number(btn_left, BTN_PARAMETER_ID, -1);
 
-    slider = lv_slider_create(obj_settings);
-    lv_slider_set_range(slider, 5, 100);
-    lv_obj_set_size(slider, 200, 32);
-    lv_obj_align(slider, LV_ALIGN_TOP_RIGHT, -32, 112);
-    view_register_object_default_callback(slider, SLIDER_NORMAL_BRIGHTNESS_ID);
-    pdata->settings.slider_normal_brightness = slider;
+    lv_obj_t *btn_right = lv_btn_create(obj_settings);
+    lv_obj_set_size(btn_right, 48, 48);
+    lbl = lv_label_create(btn_right);
+    lv_obj_set_style_text_font(lbl, STYLE_FONT_SMALL, LV_STATE_DEFAULT);
+    lv_label_set_text(lbl, LV_SYMBOL_RIGHT);
+    lv_obj_center(lbl);
+    lv_obj_align(btn_right, LV_ALIGN_TOP_RIGHT, -16, 12);
+    view_register_object_default_callback_with_number(btn_right, BTN_PARAMETER_ID, +1);
 
-    lbl = lv_label_create(obj_settings);
-    lv_obj_set_style_text_font(lbl, STYLE_FONT_TINY, LV_STATE_DEFAULT);
-    lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(lbl, 96);
-    lv_obj_align(lbl, LV_ALIGN_TOP_LEFT, 8, 112 + 64);
-    lv_label_set_text(lbl, "Standby brightness");
-    prev_lbl = lbl;
+    lv_obj_t *obj_parlist = lv_obj_create(obj_settings);
+    lv_obj_set_style_pad_all(obj_parlist, 0, LV_STATE_DEFAULT);
+    lv_obj_set_size(obj_parlist, LV_PCT(100), LV_PCT(75));
+    lv_obj_set_layout(obj_parlist, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(obj_parlist, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(obj_parlist, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_flex_main_place(obj_parlist, LV_FLEX_ALIGN_START, LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_row(obj_parlist, 16, LV_STATE_DEFAULT);
+    lv_obj_align(obj_parlist, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_add_style(obj_parlist, (lv_style_t *)&style_transparent_cont, LV_STATE_DEFAULT);
+    pdata->settings.obj_parlist = obj_parlist;
 
-    lbl = lv_label_create(obj_settings);
-    lv_obj_set_style_text_font(lbl, STYLE_FONT_TINY, LV_STATE_DEFAULT);
-    lv_obj_align_to(lbl, prev_lbl, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
-    pdata->settings.lbl_standby_brightness = lbl;
-
-    slider = lv_slider_create(obj_settings);
-    lv_slider_set_range(slider, 0, 100);
-    lv_obj_set_size(slider, 200, 32);
-    lv_obj_align(slider, LV_ALIGN_TOP_RIGHT, -32, 112 + 64);
-    view_register_object_default_callback(slider, SLIDER_STANDBY_BRIGHTNESS_ID);
-    pdata->settings.slider_standby_brightness = slider;
-
-    lbl = lv_label_create(obj_settings);
-    lv_obj_set_style_text_font(lbl, STYLE_FONT_TINY, LV_STATE_DEFAULT);
-    lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(lbl, 96);
-    lv_obj_align(lbl, LV_ALIGN_TOP_LEFT, 8, 112 + 128 + 16);
-    lv_label_set_text(lbl, "Standby delay");
-    prev_lbl = lbl;
-
-    lbl = lv_label_create(obj_settings);
-    lv_obj_set_style_text_font(lbl, STYLE_FONT_TINY, LV_STATE_DEFAULT);
-    lv_obj_align_to(lbl, prev_lbl, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
-    pdata->settings.lbl_standby_delay = lbl;
-
-    slider = lv_slider_create(obj_settings);
-    lv_slider_set_range(slider, 5, 300);
-    lv_obj_set_size(slider, 200, 32);
-    lv_obj_align(slider, LV_ALIGN_TOP_RIGHT, -32, 128 + 128);
-    view_register_object_default_callback(slider, SLIDER_STANDBY_DELAY_ID);
-    pdata->settings.slider_standby_delay = slider;
+    create_parameter_page(pmodel, pdata);
 
     /* Info tab */
     lv_obj_t *obj_info = lv_obj_create(tab_info);
@@ -420,12 +416,26 @@ static void open_page(pman_handle_t handle, void *state) {
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_LEFT, LV_STATE_DEFAULT);
     lv_obj_align(lbl, LV_ALIGN_TOP_RIGHT, -8, 8);
 
+    btn = lv_btn_create(obj_info);
+    lv_obj_set_size(btn, 320, 30);
+    lv_obj_align(btn, LV_ALIGN_TOP_RIGHT, -32, 56);
+    view_register_object_default_callback(btn, BTN_UPDATE_ID);
+
+    lbl = lv_label_create(btn);
+    lv_obj_set_style_text_font(lbl, STYLE_FONT_TINY, LV_STATE_DEFAULT);
+    lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(lbl, 300);
+    lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, LV_STATE_DEFAULT);
+    lv_obj_center(lbl);
+
+    pdata->info.btn_available_update = btn;
+
     const char *www = "https://github.com/Maldus512/wt32-sc01-clock";
     lv_obj_t   *qr  = lv_qrcode_create(obj_info, 180, lv_color_black(), lv_color_white());
     // lv_obj_set_style_border_color(qr, STYLE_BG_COLOR, LV_STATE_DEFAULT);
     // lv_obj_set_style_border_width(qr, 8, LV_STATE_DEFAULT);
     lv_qrcode_update(qr, www, strlen(www));
-    lv_obj_align(qr, LV_ALIGN_CENTER, 0, 32);
+    lv_obj_align(qr, LV_ALIGN_CENTER, 0, 48);
     pdata->info.qr = qr;
 
     pdata->btn_flag = btn_flag;
@@ -447,6 +457,7 @@ static void open_page(pman_handle_t handle, void *state) {
     update_wifi_list(pmodel, pdata);
     update_wifi_state(pmodel, pdata);
     update_alarms(pmodel, pdata, 0);
+    update_info(pmodel, pdata);
     lv_tabview_set_act(tabview, pdata->tab, LV_ANIM_OFF);
 }
 
@@ -487,6 +498,14 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
                         case CB_MILITARY_TIME_ID: {
                             model_updater_set_military_time(
                                 updater, (lv_obj_get_state(pdata->settings.cb_military_time) & LV_STATE_CHECKED) > 0);
+                            update_settings(pmodel, pdata);
+                            break;
+                        }
+
+                        case CB_NIGHT_MODE_ID: {
+                            model_set_night_mode(model_updater_read(updater),
+                                                 (lv_obj_get_state(pdata->settings.cb_night_mode) & LV_STATE_CHECKED) >
+                                                     0);
                             update_settings(pmodel, pdata);
                             break;
                         }
@@ -546,6 +565,16 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
 
                 case LV_EVENT_CLICKED: {
                     switch (obj_data->id) {
+                        case BTN_UPDATE_ID:
+                            msg.user_msg =
+                                view_controller_msg((view_controller_msg_t){.tag = VIEW_CONTROLLER_MESSAGE_TAG_OTA});
+                            break;
+
+                        case BTN_NIGHT_MODE_ID: {
+                            msg.stack_msg = PMAN_STACK_MSG_PUSH_PAGE(&page_night_mode);
+                            break;
+                        }
+
                         case BTN_BELL_ID: {
                             lv_calendar_date_t *date = lv_mem_alloc(sizeof(lv_calendar_date_t));
                             assert(date != NULL);
@@ -557,6 +586,18 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
                             date->month   = now_tm.tm_mon + 1;
                             date->year    = now_tm.tm_year + 1900;
                             msg.stack_msg = PMAN_STACK_MSG_PUSH_PAGE_EXTRA(&page_alarms, date);
+                            break;
+                        }
+
+                        case BTN_PARAMETER_ID: {
+                            if (obj_data->number > 0) {
+                                pdata->settings.page = (pdata->settings.page + obj_data->number) % PARAMETER_PAGE_NUM;
+                            } else if (pdata->settings.page == 0) {
+                                pdata->settings.page = PARAMETER_PAGE_NUM - 1;
+                            } else {
+                                pdata->settings.page--;
+                            }
+                            create_parameter_page(pmodel, pdata);
                             break;
                         }
 
@@ -625,9 +666,10 @@ static pman_msg_t page_event(pman_handle_t handle, void *state, pman_event_t eve
                 case VIEW_EVENT_TAG_VARIABLE_WATCHER: {
                     switch (view_event->as.page_watcher.code) {
                         case WATCHER_WIFI_ID:
-                            ESP_LOGI(TAG, "Wifi state change: %i %i", model_get_wifi_state(pmodel),
-                                     model_get_scanning(pmodel));
                             update_wifi_state(pmodel, pdata);
+                            break;
+                        case WATCHER_UPDATE_ID:
+                            update_info(pmodel, pdata);
                             break;
                     }
                     break;
@@ -718,20 +760,51 @@ static void update_time(model_t *pmodel, struct page_data *pdata) {
 
 
 static void update_settings(model_t *pmodel, struct page_data *pdata) {
-    if (model_get_military_time(pmodel)) {
-        lv_obj_add_state(pdata->settings.cb_military_time, LV_STATE_CHECKED);
-    } else {
-        lv_obj_clear_state(pdata->settings.cb_military_time, LV_STATE_CHECKED);
+    lv_label_set_text_fmt(pdata->settings.lbl_page, "Settings %i/%i", pdata->settings.page + 1, PARAMETER_PAGE_NUM);
+
+    switch (pdata->settings.page) {
+        case PARAMETER_PAGE_BRIGHTNESS:
+            lv_slider_set_value(pdata->settings.slider_normal_brightness, model_get_normal_brightness(pmodel),
+                                LV_ANIM_OFF);
+            lv_label_set_text_fmt(pdata->settings.lbl_normal_brightness, "%i%%", model_get_normal_brightness(pmodel));
+
+            lv_slider_set_value(pdata->settings.slider_standby_brightness, pmodel->config.standby_brightness,
+                                LV_ANIM_OFF);
+            lv_label_set_text_fmt(pdata->settings.lbl_standby_brightness, "%i%%", pmodel->config.standby_brightness);
+
+            lv_slider_set_value(pdata->settings.slider_standby_delay, model_get_standby_delay_seconds(pmodel),
+                                LV_ANIM_OFF);
+            lv_label_set_text_fmt(pdata->settings.lbl_standby_delay, "%is", model_get_standby_delay_seconds(pmodel));
+
+            if (model_get_military_time(pmodel)) {
+                lv_obj_add_state(pdata->settings.cb_military_time, LV_STATE_CHECKED);
+            } else {
+                lv_obj_clear_state(pdata->settings.cb_military_time, LV_STATE_CHECKED);
+            }
+            break;
+
+        case PARAMETER_PAGE_NIGHT_MODE: {
+            if (pmodel->config.night_mode) {
+                lv_obj_add_state(pdata->settings.cb_night_mode, LV_STATE_CHECKED);
+            } else {
+                lv_obj_clear_state(pdata->settings.cb_night_mode, LV_STATE_CHECKED);
+            }
+
+            uint16_t start_hour = pmodel->config.night_mode_start / 3600;
+            uint16_t start_min  = (pmodel->config.night_mode_start % 3600) / 60;
+
+            uint16_t end_hour = pmodel->config.night_mode_end / 3600;
+            uint16_t end_min  = (pmodel->config.night_mode_end % 3600) / 60;
+
+            lv_obj_t *lbl = lv_obj_get_child(pdata->settings.btn_night_mode, 0);
+            lv_label_set_text_fmt(lbl, "Night mode: %02i:%02i - %02i:%02i", start_hour, start_min, end_hour, end_min);
+
+            ESP_LOGI(TAG, "nm %i", pmodel->config.night_mode);
+
+            view_common_set_hidden(pdata->settings.btn_night_mode, !pmodel->config.night_mode);
+            break;
+        }
     }
-
-    lv_slider_set_value(pdata->settings.slider_normal_brightness, model_get_normal_brightness(pmodel), LV_ANIM_OFF);
-    lv_label_set_text_fmt(pdata->settings.lbl_normal_brightness, "%i%%", model_get_normal_brightness(pmodel));
-
-    lv_slider_set_value(pdata->settings.slider_standby_brightness, model_get_standby_brightness(pmodel), LV_ANIM_OFF);
-    lv_label_set_text_fmt(pdata->settings.lbl_standby_brightness, "%i%%", model_get_standby_brightness(pmodel));
-
-    lv_slider_set_value(pdata->settings.slider_standby_delay, model_get_standby_delay_seconds(pmodel), LV_ANIM_OFF);
-    lv_label_set_text_fmt(pdata->settings.lbl_standby_delay, "%is", model_get_standby_delay_seconds(pmodel));
 }
 
 
@@ -787,6 +860,18 @@ static void update_wifi_state(model_t *pmodel, struct page_data *pdata) {
 }
 
 
+static void update_info(model_t *pmodel, struct page_data *pdata) {
+    if (model_is_new_release_available(pmodel)) {
+        view_common_set_hidden(pdata->info.btn_available_update, 0);
+        lv_obj_t *lbl = lv_obj_get_child(pdata->info.btn_available_update, 0);
+        lv_label_set_text_fmt(lbl, "Update available: v%i.%i.%i", pmodel->run.latest_release_major,
+                              pmodel->run.latest_release_minor, pmodel->run.latest_release_patch);
+    } else {
+        view_common_set_hidden(pdata->info.btn_available_update, 1);
+    }
+}
+
+
 static void update_wifi_list(model_t *pmodel, struct page_data *pdata) {
     lv_obj_clean(pdata->wifi.list_networks);
     for (size_t i = 0; i < model_get_available_networks_count(pmodel); i++) {
@@ -836,6 +921,104 @@ static void btns_value_changed_event_cb(lv_event_t *e) {
     uint32_t  id = lv_btnmatrix_get_selected_btn(btns);
     pdata->tab   = id;
     lv_tabview_set_act(tv, id, LV_ANIM_OFF);
+}
+
+
+static lv_obj_t *slider_parameter_create(lv_obj_t *parent, const char *description, lv_obj_t **lbl_value,
+                                         lv_obj_t **slider_value, uint16_t minimum, uint16_t maximum) {
+    lv_obj_t *row = lv_obj_create(parent);
+    lv_obj_add_style(row, (lv_style_t *)&style_transparent_cont, LV_STATE_DEFAULT);
+    lv_obj_add_style(row, (lv_style_t *)&style_padless_cont, LV_STATE_DEFAULT);
+    lv_obj_set_size(row, LV_PCT(100), 48);
+
+    lv_obj_t *lbl = lv_label_create(row);
+    lv_obj_set_style_text_font(lbl, STYLE_FONT_TINY, LV_STATE_DEFAULT);
+    lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(lbl, 96);
+    lv_obj_align(lbl, LV_ALIGN_LEFT_MID, 8, 0);
+    lv_label_set_text(lbl, description);
+    lv_obj_t *prev_lbl = lbl;
+
+    lbl = lv_label_create(row);
+    lv_obj_set_style_text_font(lbl, STYLE_FONT_TINY, LV_STATE_DEFAULT);
+    lv_obj_align_to(lbl, prev_lbl, LV_ALIGN_OUT_RIGHT_MID, 8, 0);
+    *lbl_value = lbl;
+
+    lv_obj_t *slider = lv_slider_create(row);
+    lv_slider_set_range(slider, minimum, maximum);
+    lv_obj_set_size(slider, 200, 32);
+    lv_obj_align(slider, LV_ALIGN_RIGHT_MID, -32, 0);
+    *slider_value = slider;
+
+    return row;
+}
+
+
+static void create_parameter_page(model_t *pmodel, struct page_data *pdata) {
+    lv_obj_t *obj_parlist = pdata->settings.obj_parlist;
+
+    lv_obj_clean(obj_parlist);
+    pdata->settings.cb_military_time          = NULL;
+    pdata->settings.cb_night_mode             = NULL;
+    pdata->settings.lbl_normal_brightness     = NULL;
+    pdata->settings.lbl_standby_brightness    = NULL;
+    pdata->settings.lbl_standby_delay         = NULL;
+    pdata->settings.slider_normal_brightness  = NULL;
+    pdata->settings.slider_standby_brightness = NULL;
+    pdata->settings.slider_standby_delay      = NULL;
+    pdata->settings.btn_night_mode            = NULL;
+
+    switch (pdata->settings.page) {
+        case PARAMETER_PAGE_BRIGHTNESS: {
+            slider_parameter_create(obj_parlist, "Brightness", &pdata->settings.lbl_normal_brightness,
+                                    &pdata->settings.slider_normal_brightness, 20, 100);
+            view_register_object_default_callback(pdata->settings.slider_normal_brightness,
+                                                  SLIDER_NORMAL_BRIGHTNESS_ID);
+
+            slider_parameter_create(obj_parlist, "Standby brightness", &pdata->settings.lbl_standby_brightness,
+                                    &pdata->settings.slider_standby_brightness, 0, 20);
+            view_register_object_default_callback(pdata->settings.slider_standby_brightness,
+                                                  SLIDER_STANDBY_BRIGHTNESS_ID);
+
+            slider_parameter_create(obj_parlist, "Standby delay", &pdata->settings.lbl_standby_delay,
+                                    &pdata->settings.slider_standby_delay, 5, 300);
+            view_register_object_default_callback(pdata->settings.slider_standby_delay, SLIDER_STANDBY_DELAY_ID);
+
+            lv_obj_t *checkbox = lv_checkbox_create(obj_parlist);
+            lv_obj_set_style_text_font(checkbox, STYLE_FONT_SMALL, LV_STATE_DEFAULT | LV_PART_MAIN);
+            lv_obj_set_style_text_font(checkbox, STYLE_FONT_SMALL, LV_STATE_DEFAULT | LV_PART_INDICATOR);
+            lv_obj_set_style_text_font(checkbox, STYLE_FONT_SMALL, LV_STATE_CHECKED | LV_PART_INDICATOR);
+            lv_checkbox_set_text(checkbox, "Military time");
+            view_register_object_default_callback(checkbox, CB_MILITARY_TIME_ID);
+            pdata->settings.cb_military_time = checkbox;
+            break;
+        }
+
+        case PARAMETER_PAGE_NIGHT_MODE: {
+            lv_obj_t *checkbox = lv_checkbox_create(obj_parlist);
+            lv_obj_set_style_text_font(checkbox, STYLE_FONT_SMALL, LV_STATE_DEFAULT | LV_PART_MAIN);
+            lv_obj_set_style_text_font(checkbox, STYLE_FONT_SMALL, LV_STATE_DEFAULT | LV_PART_INDICATOR);
+            lv_obj_set_style_text_font(checkbox, STYLE_FONT_SMALL, LV_STATE_CHECKED | LV_PART_INDICATOR);
+            lv_checkbox_set_text(checkbox, "Night mode");
+            view_register_object_default_callback(checkbox, CB_NIGHT_MODE_ID);
+            pdata->settings.cb_night_mode = checkbox;
+
+            lv_obj_t *btn = lv_btn_create(obj_parlist);
+            lv_obj_set_size(btn, 340, 48);
+            lv_obj_t *lbl = lv_label_create(btn);
+            lv_obj_set_style_text_font(lbl, STYLE_FONT_SMALL, LV_STATE_DEFAULT);
+            lv_obj_center(lbl);
+            view_register_object_default_callback(btn, BTN_NIGHT_MODE_ID);
+            pdata->settings.btn_night_mode = btn;
+
+            break;
+        }
+
+        default:
+            break;
+    }
+
+    update_settings(pmodel, pdata);
 }
 
 

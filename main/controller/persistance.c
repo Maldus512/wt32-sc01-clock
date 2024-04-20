@@ -14,6 +14,9 @@ const char *PERSISTANCE_NORMAL_BRIGHTNESS_KEY  = "NORMALBR";
 const char *PERSISTANCE_STANDBY_BRIGHTNESS_KEY = "STANDBYBR";
 const char *PERSISTANCE_STANDBY_DELAY_KEY      = "STANDBYDELAY";
 const char *PERSISTANCE_ALARM_NUM_KEY          = "ALARMNUM";
+const char *PERSISTANCE_NIGHT_MODE_KEY         = "NIGHTMODE";
+const char *PERSISTANCE_NIGHT_MODE_START_KEY   = "NIGHTSTART";
+const char *PERSISTANCE_NIGHT_MODE_END_KEY     = "NIGHTEND";
 
 static const char *ALARM_KEY_FMT = "ALARM%i";
 
@@ -26,6 +29,9 @@ void persistance_load(mut_model_t *pmodel) {
     storage_load_uint8(&pmodel->config.standby_brightness, (char *)PERSISTANCE_STANDBY_BRIGHTNESS_KEY);
     storage_load_uint16(&pmodel->config.standby_delay_seconds, (char *)PERSISTANCE_STANDBY_DELAY_KEY);
     storage_load_uint16(&pmodel->config.num_alarms, (char *)PERSISTANCE_ALARM_NUM_KEY);
+    storage_load_uint8(&pmodel->config.night_mode, (char *)PERSISTANCE_NIGHT_MODE_KEY);
+    storage_load_uint32(&pmodel->config.night_mode_start, (char *)PERSISTANCE_NIGHT_MODE_START_KEY);
+    storage_load_uint32(&pmodel->config.night_mode_end, (char *)PERSISTANCE_NIGHT_MODE_END_KEY);
 
     for (size_t i = 0; i < pmodel->config.num_alarms; i++) {
         char string[32] = {0};

@@ -47,7 +47,8 @@ static void open_page(pman_handle_t handle, void *state) {
     model_updater_t   updater = pman_get_user_data(handle);
     model_t          *pmodel  = model_updater_read(updater);
 
-    VIEW_ADD_WATCHED_VARIABLE(&pmodel->run.firmware_update_state.tag, WATCHER_OTA_STATE_ID);
+    VIEW_ADD_WATCHED_VARIABLE(&pmodel->run.client_firmware_update_state.tag, WATCHER_OTA_STATE_ID);
+    VIEW_ADD_WATCHED_VARIABLE(&pmodel->run.server_firmware_update_state.tag, WATCHER_OTA_STATE_ID);
 
     lv_obj_t *spinner = lv_spinner_create(lv_scr_act(), 2000, 48);
     lv_obj_align(spinner, LV_ALIGN_CENTER, 0, 32);

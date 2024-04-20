@@ -16,6 +16,7 @@ typedef enum {
     VIEW_CONTROLLER_MESSAGE_TAG_CONNECT_TO,
     VIEW_CONTROLLER_MESSAGE_TAG_SAVE_ALARM,
     VIEW_CONTROLLER_MESSAGE_TAG_RESET,
+    VIEW_CONTROLLER_MESSAGE_TAG_OTA,
 } view_controller_msg_tag_t;
 
 typedef struct {
@@ -63,7 +64,7 @@ void    view_manage(void);
 uint8_t view_is_current_page_id(int id);
 
 
-extern const pman_page_t page_main, page_wifi_psk, page_alarms, page_alarm, page_ota;
+extern const pman_page_t page_main, page_wifi_psk, page_alarms, page_alarm, page_ota, page_night_mode;
 
 
 #endif

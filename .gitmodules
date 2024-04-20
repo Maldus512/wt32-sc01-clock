@@ -25,3 +25,6 @@
 [submodule "components/c-watcher"]
 	path = components/c-watcher
 	url = https://github.com/Maldus512/c-watcher.git
+[submodule "components/c-json-inciter"]
+	path = components/c-json-inciter
+	url = https://github.com/Maldus512/c-json-inciter.git

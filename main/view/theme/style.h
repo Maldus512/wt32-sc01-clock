@@ -20,6 +20,10 @@ LV_FONT_DECLARE(font_digital_7_64);
 #define STYLE_SECONDARY_COLOR ((lv_color_t)LV_COLOR_MAKE(0x13, 0xA1, 0xA1))
 
 
+extern const lv_style_t style_transparent_cont;
+extern const lv_style_t style_padless_cont;
+
+
 void style_init(void);
 
 #endif

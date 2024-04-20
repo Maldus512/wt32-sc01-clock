@@ -9,6 +9,7 @@
 #include "services/server.h"
 #include "services/google_calendar.h"
 #include "services/system_time.h"
+#include "services/github.h"
 #include "peripherals/system.h"
 #include <esp_log.h>
 
@@ -32,7 +33,7 @@ void controller_init(model_updater_t updater) {
 
 void controller_process_message(pman_handle_t handle, void *msg) {
     model_updater_t updater = pman_get_user_data(handle);
-    model_t        *pmodel  = model_updater_read(updater);
+    mut_model_t    *pmodel  = model_updater_read(updater);
 
     view_controller_msg_t *cmsg = msg;
 
@@ -57,6 +58,10 @@ void controller_process_message(pman_handle_t handle, void *msg) {
             case VIEW_CONTROLLER_MESSAGE_TAG_RESET:
                 system_reset();
                 break;
+
+            case VIEW_CONTROLLER_MESSAGE_TAG_OTA:
+                github_ota(pmodel);
+                break;
         }
         lv_mem_free(cmsg);
     }
@@ -64,13 +69,26 @@ void controller_process_message(pman_handle_t handle, void *msg) {
 
 
 void controller_manage(model_updater_t updater) {
-    static unsigned long timestamp = 0;
-    model_t             *pmodel    = model_updater_read(updater);
+    static unsigned long timestamp          = 0;
+    static unsigned long update_ts          = 0;
+    static uint8_t       first_update_check = 1;
+    mut_model_t         *pmodel             = model_updater_read(updater);
 
-    if (model_get_wifi_state(pmodel) == WIFI_STATE_CONNECTED && is_expired(timestamp, get_millis(), 10000UL)) {
-        // ESP_LOGI(TAG, "Attempting http request");
-        // google_calendar_example();
-        timestamp = get_millis();
+    if (model_get_wifi_state(pmodel) == WIFI_STATE_CONNECTED) {
+        if (is_expired(timestamp, get_millis(), 10000UL)) {
+            // ESP_LOGI(TAG, "Attempting http request");
+            // google_calendar_example();
+            timestamp = get_millis();
+        }
+
+        unsigned long timeout = pmodel->run.latest_release_request_state == HTTP_REQUEST_STATE_ERROR
+                                    ? 1UL * 3600UL * 1000UL
+                                    : 12UL * 3600UL * 1000UL;
+        if (is_expired(update_ts, get_millis(), timeout) || first_update_check) {
+            github_request_latest_release(pmodel);
+            first_update_check = 0;
+            update_ts          = get_millis();
+        }
     }
 
     network_get_state(updater);
@@ -78,14 +96,16 @@ void controller_manage(model_updater_t updater) {
         view_event((view_event_t){.tag = VIEW_EVENT_TAG_WIFI_SCAN_DONE});
     }
 
-    model_updater_set_firmware_update_state(updater, server_firmware_update_state());
-    if (model_get_firmware_update_state(pmodel).tag != FIRMWARE_UPDATE_STATE_TAG_NONE &&
+    pmodel->run.server_firmware_update_state = server_firmware_update_state();
+    if ((pmodel->run.server_firmware_update_state.tag != FIRMWARE_UPDATE_STATE_TAG_NONE ||
+         pmodel->run.client_firmware_update_state.tag != FIRMWARE_UPDATE_STATE_TAG_NONE) &&
         !view_is_current_page_id(VIEW_PAGE_ID_OTA)) {
         view_change_page(&page_ota);
     }
 
     controller_gui_manage();
     observer_manage();
-    standby_manage(model_updater_read(updater));
+    standby_manage(pmodel);
     view_manage();
+    github_manage(pmodel);
 }

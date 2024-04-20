@@ -18,8 +18,14 @@ void observer_init(model_t *pmodel) {
                               (void *)PERSISTANCE_NORMAL_BRIGHTNESS_KEY, 4000UL);
     WATCHER_ADD_ENTRY_DELAYED(&watcher, &pmodel->config.standby_brightness, persistance_save_variable,
                               (void *)PERSISTANCE_STANDBY_BRIGHTNESS_KEY, 4000UL);
-    WATCHER_ADD_ENTRY_DELAYED(&watcher, &pmodel->config.normal_brightness, persistance_save_variable,
+    WATCHER_ADD_ENTRY_DELAYED(&watcher, &pmodel->config.standby_delay_seconds, persistance_save_variable,
                               (void *)PERSISTANCE_STANDBY_DELAY_KEY, 4000UL);
+    WATCHER_ADD_ENTRY_DELAYED(&watcher, &pmodel->config.night_mode, persistance_save_variable,
+                              (void *)PERSISTANCE_NIGHT_MODE_KEY, 4000UL);
+    WATCHER_ADD_ENTRY_DELAYED(&watcher, &pmodel->config.night_mode_start, persistance_save_variable,
+                              (void *)PERSISTANCE_NIGHT_MODE_START_KEY, 4000UL);
+    WATCHER_ADD_ENTRY_DELAYED(&watcher, &pmodel->config.night_mode_end, persistance_save_variable,
+                              (void *)PERSISTANCE_NIGHT_MODE_END_KEY, 4000UL);
     WATCHER_ADD_ENTRY(&watcher, &pmodel->config.num_alarms, persistance_save_variable,
                       (void *)PERSISTANCE_ALARM_NUM_KEY);
 }

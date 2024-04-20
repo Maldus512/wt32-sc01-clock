@@ -128,8 +128,11 @@ void tft_init(void (*touch_cb)(void)) {
 
 
 void tft_backlight_set(uint8_t percentage) {
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, percentage); //duty);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    uint16_t duty = (percentage * 255) / 100;
+    if (ledc_get_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0) != duty) {
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
+        ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    }
 }
 
 

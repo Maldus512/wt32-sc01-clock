@@ -65,9 +65,9 @@ model_updater_t model_updater_init(mut_model_t *pmodel) {
 }
 
 
-const model_t *model_updater_read(model_updater_t updater) {
+mut_model_t *model_updater_read(model_updater_t updater) {
     assert(updater != NULL);
-    return (const model_t *)updater->pmodel;
+    return (mut_model_t *)updater->pmodel;
 }
 
 
@@ -123,12 +123,6 @@ void model_updater_add_ap(model_updater_t updater, const char *ssid, int16_t rss
         updater->pmodel->run.ap_list[i].rssi = rssi;
         updater->pmodel->run.ap_list_size++;
     }
-}
-
-
-void model_updater_set_firmware_update_state(model_updater_t updater, firmware_update_state_t fup_state) {
-    assert(updater != NULL);
-    updater->pmodel->run.firmware_update_state = fup_state;
 }
 
 
